@@ -4241,6 +4241,7 @@ public final class ActivityThread extends ClientTransactionHandler {
         updateVisibility(r, show);
 
         // Make sure any pending writes are now committed.
+        // 可能因等待写入造成卡顿甚至 ANR
         if (!r.isPreHoneycomb()) {
             QueuedWork.waitToFinish();
         }

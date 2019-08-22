@@ -434,7 +434,8 @@ class ContextImpl extends Context {
             }
         }
 
-        // mode 为 MODE_MULTI_PROCESS 时，如文件可能被其他进程修改，则重新加载
+        // mode 为 MODE_MULTI_PROCESS 时，文件可能被其他进程修改，则重新加载
+        // 显然这并不足以保证跨进程安全
         if ((mode & Context.MODE_MULTI_PROCESS) != 0 ||
             getApplicationInfo().targetSdkVersion < android.os.Build.VERSION_CODES.HONEYCOMB) {
             // If somebody else (some other process) changed the prefs

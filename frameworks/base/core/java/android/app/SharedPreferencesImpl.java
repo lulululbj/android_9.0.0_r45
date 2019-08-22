@@ -104,11 +104,11 @@ final class SharedPreferencesImpl implements SharedPreferences {
     private int mNumSync = 0;
 
     SharedPreferencesImpl(File file, int mode) {
-        mFile = file;
+        mFile = file; // sp 文件
         mBackupFile = makeBackupFile(file); // 创建备份文件
-        mMode = mode;
-        mLoaded = false;
-        mMap = null;
+        mMode = mode; 
+        mLoaded = false; // 标识 sp 文件是否已经加载到内存
+        mMap = null; // 存储 sp 文件中的键值对
         mThrowable = null;
         startLoadFromDisk();
     }
@@ -119,11 +119,15 @@ final class SharedPreferencesImpl implements SharedPreferences {
         }
         new Thread("SharedPreferencesImpl-load") {
             public void run() {
-                loadFromDisk(); // 新建线程从磁盘加载文件
+                loadFromDisk(); // 异步加载
             }
         }.start();
     }
 
+    /**
+     * 这里是异步加载的，且获取了 mLock 锁。如果 sp 文件过大，
+     * 第一次读取数据时，sp 文件还没加载完，可能导致主线程阻塞
+     */
     private void loadFromDisk() {
         synchronized (mLock) { // 获取 mLock 锁
             if (mLoaded) { // 已经加载进内存，直接返回，不再读取文件
@@ -247,6 +251,9 @@ final class SharedPreferencesImpl implements SharedPreferences {
         }
     }
 
+    /**
+     * 检查 sp 文件是否加载完成，未完成则阻塞
+     */
     @GuardedBy("mLock")
     private void awaitLoadedLocked() {
         if (!mLoaded) {
@@ -501,6 +508,9 @@ final class SharedPreferencesImpl implements SharedPreferences {
                 // We optimistically don't make a deep copy until
                 // a memory commit comes in when we're already
                 // writing to disk.
+                // 在 commit() 的写入本地文件过程中，会将 mDiskWritesInFlight 置为 1.
+                // 写入过程尚未完成时，又调用了 commitToMemory()，直接修改 mMap 可能会影响写入结果
+                // 所以这里要对 mMap 进行一次深拷贝
                 if (mDiskWritesInFlight > 0) {
                     // We can't modify our mMap as a currently
                     // in-flight write owns it.  Clone it before
