@@ -323,8 +323,11 @@ public final class MessageQueue {
                 Binder.flushPendingCommands();
             }
 
-            nativePollOnce(ptr, nextPollTimeoutMillis); // 没有消息时会阻塞在这里
-
+            // 阻塞方法，主要是通过 native 层的 epoll 监听文件描述符的写入事件来实现的。
+            // 如果 nextPollTimeoutMillis = -1，一直阻塞不会超时。
+            // 如果 nextPollTimeoutMillis = 0，不会阻塞，立即返回。
+            // 如果 nextPollTimeoutMillis > 0，最长阻塞nextPollTimeoutMillis毫秒(超时)，如果期间有程序唤醒会立即返回。
+            nativePollOnce(ptr, nextPollTimeoutMillis);
             synchronized (this) {
                 // Try to retrieve the next message.  Return if found.
                 final long now = SystemClock.uptimeMillis();
@@ -332,7 +335,8 @@ public final class MessageQueue {
                 Message msg = mMessages;
                 if (msg != null && msg.target == null) {
                     // Stalled by a barrier.  Find the next asynchronous message in the queue.
-                    // 查找异步消息
+                    // msg.target == null表示此消息为消息屏障（通过postSyncBarrier方法发送来的）
+                    // 如果发现了一个消息屏障，会循环找出第一个异步消息（如果有异步消息的话），所有同步消息都将忽略（平常发送的一般都是同步消息）
                     do {
                         prevMsg = msg;
                         msg = msg.next;
@@ -359,6 +363,7 @@ public final class MessageQueue {
                     }
                 } else {
                     // No more messages.
+                    // 没有消息，会一直阻塞，直到被唤醒
                     nextPollTimeoutMillis = -1;
                 }
 
