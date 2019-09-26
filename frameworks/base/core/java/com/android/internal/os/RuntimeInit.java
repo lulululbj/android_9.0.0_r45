@@ -196,10 +196,13 @@ public class RuntimeInit {
          */
         LoggingHandler loggingHandler = new LoggingHandler();
         Thread.setUncaughtExceptionPreHandler(loggingHandler);
+
+        // 设置默认的未捕捉异常处理器，默认直接 kill app
         Thread.setDefaultUncaughtExceptionHandler(new KillApplicationHandler(loggingHandler));
 
         /*
          * Install a TimezoneGetter subclass for ZoneInfo.db
+         * 时区设置
          */
         TimezoneGetter.setInstance(new TimezoneGetter() {
             @Override
@@ -221,12 +224,15 @@ public class RuntimeInit {
 
         /*
          * Sets the default HTTP User-Agent used by HttpURLConnection.
+         * 设置用于 HttpURLConnection 的默认的 HTTP User-Agent 
+         * "Dalvik/1.1.0 (Linux; U; Android Eclair Build/MASTER)"
          */
         String userAgent = getDefaultUserAgent();
         System.setProperty("http.agent", userAgent);
 
         /*
          * Wire socket tagging to traffic stats.
+         * 流量统计
          */
         NetworkManagementSocketTagger.install();
 
@@ -319,7 +325,8 @@ public class RuntimeInit {
          * by invoking the exception's run() method. This arrangement
          * clears up all the stack frames that were required in setting
          * up the process.
-         * 返回一个 Runnable，之前的版本是抛出一个异常，在 main() 方法中捕获
+         * 返回一个 Runnable，在 Zygote 的 main() 方法中执行器 run() 方法
+         * 之前的版本是抛出一个异常，在 main() 方法中捕获
          */
         return new MethodAndArgsCaller(m, argv);
     }
@@ -355,16 +362,17 @@ public class RuntimeInit {
 
         // We want to be fairly aggressive about heap utilization, to avoid
         // holding on to a lot of memory that isn't needed.
+        // //设置虚拟机的内存利用率参数值为 0.75
         VMRuntime.getRuntime().setTargetHeapUtilization(0.75f);
         VMRuntime.getRuntime().setTargetSdkVersion(targetSdkVersion);
 
-        final Arguments args = new Arguments(argv);
+        final Arguments args = new Arguments(argv); // 解析参数
 
         // The end of of the RuntimeInit event (see #zygoteInit).
         Trace.traceEnd(Trace.TRACE_TAG_ACTIVITY_MANAGER);
 
         // Remaining arguments are passed to the start class's static main
-        // 寻找 main() 方法
+        // 寻找 startClass 的 main() 方法。这里的 startClass 是 com.android.server.SystemServer
         return findStaticMain(args.startClass, args.startArgs, classLoader);
     }
 

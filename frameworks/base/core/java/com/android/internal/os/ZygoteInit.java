@@ -456,12 +456,14 @@ public class ZygoteInit {
         // umask一般是用在你初始创建一个目录或者文件的时候赋予他们的权限
         Os.umask(S_IRWXG | S_IRWXO);
 
-        if (parsedArgs.niceName != null) { // system_server
+        // 设置当前进程名为 "system_server"
+        if (parsedArgs.niceName != null) { 
             Process.setArgV0(parsedArgs.niceName);
         }
 
         final String systemServerClasspath = Os.getenv("SYSTEMSERVERCLASSPATH");
         if (systemServerClasspath != null) {
+            // dex 优化操作
             performSystemServerDexOpt(systemServerClasspath);
             // Capturing profiles is only supported for debug or eng builds since selinux normally
             // prevents it.
@@ -497,8 +499,9 @@ public class ZygoteInit {
         } else {
             ClassLoader cl = null;
             if (systemServerClasspath != null) {
+                // 创建类加载器，并赋给当前线程
                 cl = createPathClassLoader(systemServerClasspath, parsedArgs.targetSdkVersion);
-
+                
                 Thread.currentThread().setContextClassLoader(cl);
             }
 
@@ -922,7 +925,9 @@ public class ZygoteInit {
         }
 
         Trace.traceBegin(Trace.TRACE_TAG_ACTIVITY_MANAGER, "ZygoteInit");
-        RuntimeInit.redirectLogStreams(); // Redirect System.out and System.err to the Android log.
+         // Redirect System.out and System.err to the Android log.
+         // 重定向 System.out 和 System.err 到 Android log
+        RuntimeInit.redirectLogStreams();
 
         RuntimeInit.commonInit(); // 一些初始化工作
         ZygoteInit.nativeZygoteInit(); // native 层初始化
