@@ -712,7 +712,7 @@ public class ZygoteInit {
             }
 
             /* Request to fork the system server process
-             * fork system_server 子进程
+             * fork system_server 进程
              */
             pid = Zygote.forkSystemServer(
                     parsedArgs.uid, parsedArgs.gid,
@@ -726,16 +726,21 @@ public class ZygoteInit {
         }
 
         /* For child process */
-        // pid ==0 表示子进程，从这里开始进入 system_server 进程
+        // pid == 0 表示子进程，从这里开始进入 system_server 进程
         if (pid == 0) {
             if (hasSecondZygote(abiList)) { // 如果有第二个 Zygote
                 waitForSecondaryZygote(socketName);
             }
 
-            zygoteServer.closeServerSocket(); // 关闭并释放 zygote socket
+            zygoteServer.closeServerSocket(); // 关闭并释放从 Zygote copy 过来的 socket
             return handleSystemServerProcess(parsedArgs); // 完成新创建的 system_server 进程的剩余工作
         }
 
+        /**
+         * 注意 fork() 函数式一次执行，两次返回（两个进程对同一程序的两次执行）。
+         * pid > 0  说明还是父进程。pid = 0 说明进入了子进程
+         * 所以这里的 return null 依旧会执行 
+         */
         return null;
     }
 
