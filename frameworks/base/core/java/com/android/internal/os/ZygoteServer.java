@@ -81,7 +81,7 @@ class ZygoteServer {
             int fileDesc;
             final String fullSocketName = ANDROID_SOCKET_PREFIX + socketName;
             try {
-                String env = System.getenv(fullSocketName);
+                String env = System.getenv(fullSocketName); // 从环境变量中获取 socket 的 fd
                 fileDesc = Integer.parseInt(env);
             } catch (RuntimeException ex) {
                 throw new RuntimeException(fullSocketName + " unset or invalid", ex);
