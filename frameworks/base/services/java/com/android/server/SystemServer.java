@@ -314,7 +314,7 @@ public final class SystemServer {
             // APIs crash dealing with negative numbers, notably
             // java.io.File#setLastModified, so instead we fake it and
             // hope that time from cell towers or NTP fixes it shortly.
-            // 如果设备时间早于 1970 年，很多 API 会 crash。所以直接设置为 1970 年
+            // 如果设备时间早于 1970 年，很多 API 处理负数时会 crash。所以直接设置为 1970 年 1 月 1 日
             if (System.currentTimeMillis() < EARLIEST_SUPPORTED_TIME) {
                 Slog.w(TAG, "System clock is before 1970; setting to 1970.");
                 SystemClock.setCurrentTimeMillis(EARLIEST_SUPPORTED_TIME);
@@ -373,17 +373,21 @@ public final class SystemServer {
             // had to fallback to a different runtime because it is
             // running as root and we need to be the system user to set
             // the property. http://b/11463182
+            // 设置虚拟机运行库路径
             SystemProperties.set("persist.sys.dalvik.vm.lib.2", VMRuntime.getRuntime().vmLibrary());
 
             // Mmmmmm... more memory!
+            // 清除虚拟机内存增长限制，允许应用申请更多内存
             VMRuntime.getRuntime().clearGrowthLimit();
 
             // The system server has to run all of the time, so it needs to be
             // as efficient as possible with its memory usage.
+            // 设置堆内存的有效利用率为 0.8，(可能被忽略)
             VMRuntime.getRuntime().setTargetHeapUtilization(0.8f);
 
             // Some devices rely on runtime fingerprint generation, so make sure
             // we've defined it before booting further.
+            // 确保指纹信息已经定义
             Build.ensureFingerprintProperty();
 
             // Within the system server, it is an error to access Environment paths without
@@ -398,6 +402,7 @@ public final class SystemServer {
             Parcel.setStackTraceParceling(true);
 
             // Ensure binder calls into the system always run at foreground priority.
+            // 确保系统的 Binder 调用总是运行在前台优先级
             BinderInternal.disableBackgroundScheduling(true);
 
             // Increase the number of binder threads in system_server
@@ -418,6 +423,7 @@ public final class SystemServer {
 
             // Check whether we failed to shut down last time we tried.
             // This call may not return.
+            // 检查上次关机是否失败，可能不会有返回值
             performPendingShutdown();
 
             // Initialize the system context.
