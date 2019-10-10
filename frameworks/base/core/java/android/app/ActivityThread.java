@@ -6528,7 +6528,7 @@ public final class ActivityThread extends ClientTransactionHandler {
     private void attach(boolean system, long startSeq) {
         sCurrentActivityThread = this;
         mSystemThread = system;
-        if (!system) {
+        if (!system) { // 进入此分支的是非系统进程
             ViewRootImpl.addFirstDrawHandler(new Runnable() {
                 @Override
                 public void run() {
@@ -6566,7 +6566,7 @@ public final class ActivityThread extends ClientTransactionHandler {
                     }
                 }
             });
-        } else {
+        } else { // 进入此分支的是系统进程
             // Don't set application object here -- if the system crashes,
             // we can't display an alert, we just want to die die die.
             android.ddm.DdmHandleAppName.setAppName("system_process",
@@ -6612,8 +6612,8 @@ public final class ActivityThread extends ClientTransactionHandler {
     public static ActivityThread systemMain() {
         // The system process on low-memory devices do not get to use hardware
         // accelerated drawing, since this can add too much overhead to the
-        // process.
-        if (!ActivityManager.isHighEndGfx()) {
+        // process. 在低内存设备上不启用硬件加速
+        if (!ActivityManager.isHighEndGfx()) { // 判断是否是大内存设备
             ThreadedRenderer.disable(true);
         } else {
             ThreadedRenderer.enableForegroundTrimming();
