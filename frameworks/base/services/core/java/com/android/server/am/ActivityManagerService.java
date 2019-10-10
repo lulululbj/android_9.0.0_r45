@@ -2886,6 +2886,7 @@ public class ActivityManagerService extends IActivityManager.Stub
     public static final class Lifecycle extends SystemService {
         private final ActivityManagerService mService;
 
+        // 构造函数中新建 ActivityManagerService 对象
         public Lifecycle(Context context) {
             super(context);
             mService = new ActivityManagerService(context);
@@ -4485,6 +4486,7 @@ public class ActivityManagerService extends IActivityManager.Stub
                         app.info.dataDir, null,
                         new String[] {PROC_START_SEQ_IDENT + app.startSeq});
             } else {
+                // 新建进程
                 startResult = Process.start(entryPoint,
                         app.processName, uid, uid, gids, runtimeFlags, mountExternal,
                         app.info.targetSdkVersion, seInfo, requiredAbi, instructionSet,

@@ -203,6 +203,7 @@ class ZygoteServer {
                 } else { // 处理客户端请求
                     try {
                         ZygoteConnection connection = peers.get(i);
+                        // fork 子进程，并返回包含子进程 main() 函数的 Runnable 对象
                         final Runnable command = connection.processOneCommand(this);
 
                         if (mIsForkChild) {

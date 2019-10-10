@@ -583,6 +583,7 @@ public final class SystemServer {
         traceBeginAndSlog("StartActivityManager");
         mActivityManagerService = mSystemServiceManager.startService(
                 ActivityManagerService.Lifecycle.class).getService();
+        // 设置 AMS 的系统服务管理器
         mActivityManagerService.setSystemServiceManager(mSystemServiceManager);
         mActivityManagerService.setInstaller(installer);
         traceEnd();

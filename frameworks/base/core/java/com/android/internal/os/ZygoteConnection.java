@@ -126,7 +126,8 @@ class ZygoteConnection {
         FileDescriptor[] descriptors;
 
         try {
-            args = readArgumentList(); // 读取 socket 客户端发送过来的参数列表
+             // 读取 socket 客户端发送过来的参数列表
+            args = readArgumentList();
             descriptors = mSocket.getAncillaryFileDescriptors();
         } catch (IOException ex) {
             throw new IllegalStateException("IOException on command socket", ex);
@@ -239,9 +240,10 @@ class ZygoteConnection {
 
         try {
             if (pid == 0) {
-                // in child 进入子进程
+                // in child 
+                // 处于进子进程
                 zygoteServer.setForkChild();
-
+                // 关闭服务端 socket
                 zygoteServer.closeServerSocket();
                 IoUtils.closeQuietly(serverPipeFd);
                 serverPipeFd = null;
@@ -250,7 +252,8 @@ class ZygoteConnection {
                         parsedArgs.startChildZygote);
             } else {
                 // In the parent. A pid < 0 indicates a failure and will be handled in
-                // handleParentProc.
+                // handleParentProc. 
+                // 处于 Zygote 进程
                 IoUtils.closeQuietly(childPipeFd);
                 childPipeFd = null;
                 handleParentProc(pid, descriptors, serverPipeFd);
@@ -850,7 +853,7 @@ class ZygoteConnection {
          * objects still need to be closed properly.
          */
 
-        closeSocket();
+        closeSocket(); // 关闭 socket 连接
         if (descriptors != null) {
             try {
                 Os.dup2(descriptors[0], STDIN_FILENO);
@@ -866,6 +869,7 @@ class ZygoteConnection {
         }
 
         if (parsedArgs.niceName != null) {
+            // 设置进程名
             Process.setArgV0(parsedArgs.niceName);
         }
 
@@ -880,7 +884,7 @@ class ZygoteConnection {
             // Should not get here.
             throw new IllegalStateException("WrapperInit.execApplication unexpectedly returned");
         } else {
-            if (!isZygote) {
+            if (!isZygote) { // 新建应用进程时 isZygote 参数为 false
                 return ZygoteInit.zygoteInit(parsedArgs.targetSdkVersion, parsedArgs.remainingArgs,
                         null /* classLoader */);
             } else {
