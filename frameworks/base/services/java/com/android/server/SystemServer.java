@@ -585,6 +585,7 @@ public final class SystemServer {
                 ActivityManagerService.Lifecycle.class).getService();
         // 设置 AMS 的系统服务管理器
         mActivityManagerService.setSystemServiceManager(mSystemServiceManager);
+        // 设置 AMS 的应用安装器
         mActivityManagerService.setInstaller(installer);
         traceEnd();
 
@@ -1804,6 +1805,7 @@ public final class SystemServer {
             traceEnd();
             traceBeginAndSlog("StartObservingNativeCrashes");
             try {
+                // 开启 NativeCrashListener
                 mActivityManagerService.startObservingNativeCrashes();
             } catch (Throwable e) {
                 reportWtf("observing native crashes", e);
@@ -1812,6 +1814,7 @@ public final class SystemServer {
 
             // No dependency on Webview preparation in system server. But this should
             // be completed before allowing 3rd party
+            // 启动 WebView
             final String WEBVIEW_PREPARATION = "WebViewFactoryPreparation";
             Future<?> webviewPrep = null;
             if (!mOnlyCore && mWebViewUpdateService != null) {
@@ -1835,11 +1838,14 @@ public final class SystemServer {
 
             traceBeginAndSlog("StartSystemUI");
             try {
+                // 启动 system ui
                 startSystemUi(context, windowManagerF);
             } catch (Throwable e) {
                 reportWtf("starting System UI", e);
             }
             traceEnd();
+
+            // 一系列 systemReady()
             traceBeginAndSlog("MakeNetworkManagementServiceReady");
             try {
                 if (networkManagementF != null) networkManagementF.systemReady();
@@ -1901,6 +1907,7 @@ public final class SystemServer {
                     SystemService.PHASE_THIRD_PARTY_APPS_CAN_START);
             traceEnd();
 
+            // 一系列 systemRunning()
             traceBeginAndSlog("MakeLocationServiceReady");
             try {
                 if (locationF != null) locationF.systemRunning();

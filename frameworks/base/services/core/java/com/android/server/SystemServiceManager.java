@@ -176,6 +176,10 @@ public class SystemServiceManager {
         return mCurrentPhase >= SystemService.PHASE_BOOT_COMPLETED;
     }
 
+    /**
+     * 回调所有 SystemService 的 onStartUser() 方法
+     * @param userHandle
+     */
     public void startUser(final int userHandle) {
         Slog.i(TAG, "Calling onStartUser u" + userHandle);
         final int serviceLen = mServices.size();

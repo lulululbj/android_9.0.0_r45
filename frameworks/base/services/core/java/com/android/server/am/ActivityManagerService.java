@@ -2728,6 +2728,7 @@ public class ActivityManagerService extends IActivityManager.Stub
 
     public void setSystemProcess() {
         try {
+            // 注册各种服务
             ServiceManager.addService(Context.ACTIVITY_SERVICE, this, /* allowIsolated= */ true,
                     DUMP_FLAG_PRIORITY_CRITICAL | DUMP_FLAG_PRIORITY_NORMAL | DUMP_FLAG_PROTO);
             ServiceManager.addService(ProcessStats.SERVICE_NAME, mProcessStats);
@@ -2742,11 +2743,13 @@ public class ActivityManagerService extends IActivityManager.Stub
             ServiceManager.addService("permission", new PermissionController(this));
             ServiceManager.addService("processinfo", new ProcessInfoService(this));
 
+            // 获取包名为 android 的应用信息
             ApplicationInfo info = mContext.getPackageManager().getApplicationInfo(
                     "android", STOCK_PM_FLAGS | MATCH_SYSTEM_ONLY);
             mSystemThread.installSystemApplicationInfo(info, getClass().getClassLoader());
 
             synchronized (this) {
+                // 创建 ProcessRecord
                 ProcessRecord app = newProcessRecordLocked(info, info.processName, false, 0);
                 app.persistent = true;
                 app.pid = MY_PID;
@@ -3060,20 +3063,23 @@ public class ActivityManagerService extends IActivityManager.Stub
         mContext = systemContext;
 
         mFactoryTest = FactoryTest.getMode();
-        mSystemThread = ActivityThread.currentActivityThread();
-        mUiContext = mSystemThread.getSystemUiContext();
+        mSystemThread = ActivityThread.currentActivityThread(); // ActivityThread 对象
+        mUiContext = mSystemThread.getSystemUiContext(); // ContextImpl 对象
 
         Slog.i(TAG, "Memory class: " + ActivityManager.staticGetMemoryClass());
 
         mPermissionReviewRequired = mContext.getResources().getBoolean(
                 com.android.internal.R.bool.config_permissionReviewRequired);
 
+        // 线程名为 ActivityManager 的前台线程，ServiceThread 继承于 HandlerThread
         mHandlerThread = new ServiceThread(TAG,
                 THREAD_PRIORITY_FOREGROUND, false /*allowIo*/);
         mHandlerThread.start();
+        // 获取 mHandlerThread 的 Handler 对象
         mHandler = new MainHandler(mHandlerThread.getLooper());
         mUiHandler = mInjector.getUiHandler(this);
 
+        // 不知道什么作用
         mProcStartHandlerThread = new ServiceThread(TAG + ":procStart",
                 THREAD_PRIORITY_FOREGROUND, false /* allowIo */);
         mProcStartHandlerThread.start();
@@ -3089,8 +3095,10 @@ public class ActivityManagerService extends IActivityManager.Stub
             sKillHandler = new KillHandler(sKillThread.getLooper());
         }
 
+        // 前台广播接收器，超时时间为 10 秒
         mFgBroadcastQueue = new BroadcastQueue(this, mHandler,
                 "foreground", BROADCAST_FG_TIMEOUT, false);
+        // 后台广播接收器，超时时间为 60 秒
         mBgBroadcastQueue = new BroadcastQueue(this, mHandler,
                 "background", BROADCAST_BG_TIMEOUT, true);
         mBroadcastQueues[0] = mFgBroadcastQueue;
@@ -3100,6 +3108,7 @@ public class ActivityManagerService extends IActivityManager.Stub
         mProviderMap = new ProviderMap(this);
         mAppErrors = new AppErrors(mUiContext, this);
 
+        // 创建 /data/system 目录
         File dataDir = Environment.getDataDirectory();
         File systemDir = new File(dataDir, "system");
         systemDir.mkdirs();
@@ -3107,6 +3116,8 @@ public class ActivityManagerService extends IActivityManager.Stub
         mAppWarnings = new AppWarnings(this, mUiContext, mHandler, mUiHandler, systemDir);
 
         // TODO: Move creation of battery stats service outside of activity manager service.
+        // 创建 BatteryStatsService
+        // 这里有个 TODO，打算把 BatteryStatsService 的创建移除 AMS
         mBatteryStatsService = new BatteryStatsService(systemContext, systemDir, mHandler);
         mBatteryStatsService.getActiveStatistics().readLocked();
         mBatteryStatsService.scheduleWriteToDisk();
@@ -3114,6 +3125,7 @@ public class ActivityManagerService extends IActivityManager.Stub
                 : mBatteryStatsService.getActiveStatistics().getIsOnBattery();
         mBatteryStatsService.getActiveStatistics().setCallback(this);
 
+        // 创建 ProcessStatsService
         mProcessStats = new ProcessStatsService(this, new File(systemDir, "procstats"));
 
         mAppOpsService = mInjector.getAppOpsService(new File(systemDir, "appops.xml"), mHandler);
@@ -3124,6 +3136,7 @@ public class ActivityManagerService extends IActivityManager.Stub
 
         mVrController = new VrController(this);
 
+        // 获取 OpenGL 版本
         GL_ES_VERSION = SystemProperties.getInt("ro.opengles.version",
             ConfigurationInfo.GL_ES_VERSION_UNDEFINED);
 
@@ -3135,6 +3148,7 @@ public class ActivityManagerService extends IActivityManager.Stub
         mTempConfig.setToDefaults();
         mTempConfig.setLocales(LocaleList.getDefault());
         mConfigurationSeq = mTempConfig.seq = 1;
+        // 创建 ActivityStackSupervisor 对象
         mStackSupervisor = createStackSupervisor();
         mStackSupervisor.onConfigurationChanged(mTempConfig);
         mKeyguardController = mStackSupervisor.getKeyguardController();
@@ -3142,18 +3156,21 @@ public class ActivityManagerService extends IActivityManager.Stub
         mIntentFirewall = new IntentFirewall(new IntentFirewallInterface(), mHandler);
         mTaskChangeNotificationController =
                 new TaskChangeNotificationController(this, mStackSupervisor, mHandler);
+        // 创建 ActivityStartController 对象
         mActivityStartController = new ActivityStartController(this);
+        // 创建 RecentTask 对象
         mRecentTasks = createRecentTasks();
         mStackSupervisor.setRecentTasks(mRecentTasks);
         mLockTaskController = new LockTaskController(mContext, mStackSupervisor, mHandler);
         mLifecycleManager = new ClientLifecycleManager();
 
+        // 创建 CpuTracker 线程，追踪 CPU 状态
         mProcessCpuThread = new Thread("CpuTracker") {
             @Override
             public void run() {
                 synchronized (mProcessCpuTracker) {
                     mProcessCpuInitLatch.countDown();
-                    mProcessCpuTracker.init();
+                    mProcessCpuTracker.init(); // 初始化 ProcessCpuTracker。注意同步问题
                 }
                 while (true) {
                     try {
@@ -3182,8 +3199,10 @@ public class ActivityManagerService extends IActivityManager.Stub
             }
         };
 
+        // hidden api 设置
         mHiddenApiBlacklist = new HiddenApiSettings(mHandler, mContext);
 
+        // 设置 Watchdog
         Watchdog.getInstance().addMonitor(this);
         Watchdog.getInstance().addThread(mHandler);
 
@@ -3223,16 +3242,22 @@ public class ActivityManagerService extends IActivityManager.Stub
     }
 
     private void start() {
+        // 移除所有进程组
         removeAllProcessGroups();
+        // 启动构造函数中创建的 CpuTracker 线程
         mProcessCpuThread.start();
 
+        // 启动 BatteryStatsService，AppOpsService
         mBatteryStatsService.publish();
         mAppOpsService.publish(mContext);
         Slog.d("AppOps", "AppOpsService published");
+        // 启动 LocalService
         LocalServices.addService(ActivityManagerInternal.class, new LocalService());
         // Wait for the synchronized block started in mProcessCpuThread,
         // so that any other acccess to mProcessCpuTracker from main thread
         // will be blocked during mProcessCpuTracker initialization.
+        // 等待 mProcessCpuThread 线程中的同步代码块执行完毕。
+        // 在执行 mProcessCpuTracker.init() 方法时访问 mProcessCpuTracker 将阻塞
         try {
             mProcessCpuInitLatch.await();
         } catch (InterruptedException e) {
@@ -4653,7 +4678,7 @@ public class ActivityManagerService extends IActivityManager.Stub
         intent.setComponent(mTopComponent);
         intent.addFlags(Intent.FLAG_DEBUG_TRIAGED_MISSING);
         if (mFactoryTest != FactoryTest.FACTORY_TEST_LOW_LEVEL) {
-            intent.addCategory(Intent.CATEGORY_HOME);
+            intent.addCategory(Intent.CATEGORY_HOME); // android.intent.category.HOME
         }
         return intent;
     }
@@ -4682,6 +4707,7 @@ public class ActivityManagerService extends IActivityManager.Stub
                 // For ANR debugging to verify if the user activity is the one that actually
                 // launched.
                 final String myReason = reason + ":" + userId + ":" + resolvedUserId;
+                // 启动桌面 Activity
                 mActivityStartController.startHomeActivity(intent, aInfo, myReason);
             }
         } else {
@@ -12944,6 +12970,8 @@ public class ActivityManagerService extends IActivityManager.Stub
                 }
             }
         }
+
+        // 安装系统 Provider
         if (providers != null) {
             mSystemThread.installSystemProviders(providers);
         }
@@ -12953,7 +12981,9 @@ public class ActivityManagerService extends IActivityManager.Stub
         }
 
         mConstants.start(mContext.getContentResolver());
+        // 监控核心设置的变化
         mCoreSettingsObserver = new CoreSettingsObserver(this);
+        // 监控字体的变化
         mFontScaleSettingObserver = new FontScaleSettingObserver();
         mDevelopmentSettingsObserver = new DevelopmentSettingsObserver();
         GlobalSettingsToPropertiesMapper.start(mContext.getContentResolver());
@@ -15193,7 +15223,7 @@ public class ActivityManagerService extends IActivityManager.Stub
     public void systemReady(final Runnable goingCallback, TimingsTraceLog traceLog) {
         traceLog.traceBegin("PhaseActivityManagerReady");
         synchronized(this) {
-            if (mSystemReady) {
+            if (mSystemReady) { // 首次为 false
                 // If we're done calling all the receivers, run the next "boot phase" passed in
                 // by the SystemServer
                 if (goingCallback != null) {
@@ -15311,6 +15341,7 @@ public class ActivityManagerService extends IActivityManager.Stub
                 Integer.toString(currentUserId), currentUserId);
         mBatteryStatsService.noteEvent(BatteryStats.HistoryItem.EVENT_USER_FOREGROUND_START,
                 Integer.toString(currentUserId), currentUserId);
+        // 回调所有 SystemService 的 onStartUser() 方法
         mSystemServiceManager.startUser(currentUserId);
 
         synchronized (this) {
@@ -15335,6 +15366,8 @@ public class ActivityManagerService extends IActivityManager.Stub
                     throw e.rethrowAsRuntimeException();
                 }
             }
+
+            // 启动桌面 Home 应用
             startHomeActivityLocked(currentUserId, "systemReady");
 
             try {
@@ -15353,6 +15386,7 @@ public class ActivityManagerService extends IActivityManager.Stub
 
             long ident = Binder.clearCallingIdentity();
             try {
+                // 发送广播 USER_STARTED
                 Intent intent = new Intent(Intent.ACTION_USER_STARTED);
                 intent.addFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY
                         | Intent.FLAG_RECEIVER_FOREGROUND);
@@ -15361,6 +15395,7 @@ public class ActivityManagerService extends IActivityManager.Stub
                         null, null, 0, null, null, null, OP_NONE,
                         null, false, false, MY_PID, SYSTEM_UID,
                         currentUserId);
+                // 发送广播 USER_STARTING
                 intent = new Intent(Intent.ACTION_USER_STARTING);
                 intent.addFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY);
                 intent.putExtra(Intent.EXTRA_USER_HANDLE, currentUserId);
