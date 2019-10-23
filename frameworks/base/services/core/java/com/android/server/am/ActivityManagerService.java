@@ -2729,21 +2729,28 @@ public class ActivityManagerService extends IActivityManager.Stub
     public void setSystemProcess() {
         try {
             // 注册各种服务
+            // 注册 AMS
             ServiceManager.addService(Context.ACTIVITY_SERVICE, this, /* allowIsolated= */ true,
                     DUMP_FLAG_PRIORITY_CRITICAL | DUMP_FLAG_PRIORITY_NORMAL | DUMP_FLAG_PROTO);
+            // 注册进程统计服务
             ServiceManager.addService(ProcessStats.SERVICE_NAME, mProcessStats);
+            // 注册内存信息服务
             ServiceManager.addService("meminfo", new MemBinder(this), /* allowIsolated= */ false,
                     DUMP_FLAG_PRIORITY_HIGH);
+            // 注册 GraphicsBinder
             ServiceManager.addService("gfxinfo", new GraphicsBinder(this));
+            // 注册 DbBinder
             ServiceManager.addService("dbinfo", new DbBinder(this));
             if (MONITOR_CPU_USAGE) {
                 ServiceManager.addService("cpuinfo", new CpuBinder(this),
                         /* allowIsolated= */ false, DUMP_FLAG_PRIORITY_CRITICAL);
             }
-            ServiceManager.addService("permission", new PermissionController(this));
+            // 注册权限管理者 PermissionController
+            ServiceManager.addService("permission", new PermissionController(this
+            // 注册进程信息服务 ProcessInfoService
             ServiceManager.addService("processinfo", new ProcessInfoService(this));
 
-            // 获取包名为 android 的应用信息
+            // 获取包名为 android 的应用信息，framework-res.java
             ApplicationInfo info = mContext.getPackageManager().getApplicationInfo(
                     "android", STOCK_PM_FLAGS | MATCH_SYSTEM_ONLY);
             mSystemThread.installSystemApplicationInfo(info, getClass().getClassLoader());
@@ -2759,6 +2766,7 @@ public class ActivityManagerService extends IActivityManager.Stub
                     mPidsSelfLocked.put(app.pid, app);
                 }
                 updateLruProcessLocked(app, false, null);
+                // 更新进程对应的 oom_adj 值
                 updateOomAdjLocked();
             }
         } catch (PackageManager.NameNotFoundException e) {
@@ -2767,6 +2775,7 @@ public class ActivityManagerService extends IActivityManager.Stub
         }
 
         // Start watching app ops after we and the package manager are up and running.
+        // 当 packager manager 启动并运行时开始监听 app ops
         mAppOpsService.startWatchingMode(AppOpsManager.OP_RUN_IN_BACKGROUND, null,
                 new IAppOpsCallback.Stub() {
                     @Override public void opChanged(int op, int uid, String packageName) {
@@ -3060,6 +3069,7 @@ public class ActivityManagerService extends IActivityManager.Stub
     public ActivityManagerService(Context systemContext) {
         LockGuard.installLock(this, LockGuard.INDEX_ACTIVITY);
         mInjector = new Injector();
+        // AMS 上下文
         mContext = systemContext;
 
         mFactoryTest = FactoryTest.getMode();
@@ -3077,6 +3087,7 @@ public class ActivityManagerService extends IActivityManager.Stub
         mHandlerThread.start();
         // 获取 mHandlerThread 的 Handler 对象
         mHandler = new MainHandler(mHandlerThread.getLooper());
+        // 创建名为 android.ui 的线程
         mUiHandler = mInjector.getUiHandler(this);
 
         // 不知道什么作用
@@ -3095,17 +3106,19 @@ public class ActivityManagerService extends IActivityManager.Stub
             sKillHandler = new KillHandler(sKillThread.getLooper());
         }
 
-        // 前台广播接收器，超时时间为 10 秒
+        // 前台广播队列，超时时间为 10 秒
         mFgBroadcastQueue = new BroadcastQueue(this, mHandler,
                 "foreground", BROADCAST_FG_TIMEOUT, false);
-        // 后台广播接收器，超时时间为 60 秒
+        // 后台广播队列，超时时间为 60 秒
         mBgBroadcastQueue = new BroadcastQueue(this, mHandler,
                 "background", BROADCAST_BG_TIMEOUT, true);
         mBroadcastQueues[0] = mFgBroadcastQueue;
         mBroadcastQueues[1] = mBgBroadcastQueue;
 
+        // 创建 ActiveServices
         mServices = new ActiveServices(this);
         mProviderMap = new ProviderMap(this);
+        // 创建 AppErrors，用于处理应用中的错误
         mAppErrors = new AppErrors(mUiContext, this);
 
         // 创建 /data/system 目录
@@ -3125,11 +3138,12 @@ public class ActivityManagerService extends IActivityManager.Stub
                 : mBatteryStatsService.getActiveStatistics().getIsOnBattery();
         mBatteryStatsService.getActiveStatistics().setCallback(this);
 
-        // 创建 ProcessStatsService
+        // 创建 ProcessStatsService，并将其信息保存在 /data/system/procstats 中
         mProcessStats = new ProcessStatsService(this, new File(systemDir, "procstats"));
 
         mAppOpsService = mInjector.getAppOpsService(new File(systemDir, "appops.xml"), mHandler);
 
+        // 定义 ContentProvider 访问指定Uri数据的权限
         mGrantFile = new AtomicFile(new File(systemDir, "urigrants.xml"), "uri-grants");
 
         mUserController = new UserController(this);
@@ -3148,7 +3162,7 @@ public class ActivityManagerService extends IActivityManager.Stub
         mTempConfig.setToDefaults();
         mTempConfig.setLocales(LocaleList.getDefault());
         mConfigurationSeq = mTempConfig.seq = 1;
-        // 创建 ActivityStackSupervisor 对象
+        // 创建 ActivityStackSupervisor 对象，用于管理 Activity 任务栈
         mStackSupervisor = createStackSupervisor();
         mStackSupervisor.onConfigurationChanged(mTempConfig);
         mKeyguardController = mStackSupervisor.getKeyguardController();
@@ -3156,9 +3170,9 @@ public class ActivityManagerService extends IActivityManager.Stub
         mIntentFirewall = new IntentFirewall(new IntentFirewallInterface(), mHandler);
         mTaskChangeNotificationController =
                 new TaskChangeNotificationController(this, mStackSupervisor, mHandler);
-        // 创建 ActivityStartController 对象
+        // 创建 ActivityStartController 对象，用于管理 Activity 的启动
         mActivityStartController = new ActivityStartController(this);
-        // 创建 RecentTask 对象
+        // 创建最近任务栈 RecentTask 对象
         mRecentTasks = createRecentTasks();
         mStackSupervisor.setRecentTasks(mRecentTasks);
         mLockTaskController = new LockTaskController(mContext, mStackSupervisor, mHandler);
@@ -3191,6 +3205,7 @@ public class ActivityManagerService extends IActivityManager.Stub
                             }
                         } catch (InterruptedException e) {
                         }
+                        // 更新 Cpu 统计信息
                         updateCpuStatsNow();
                     } catch (Exception e) {
                         Slog.e(TAG, "Unexpected exception collecting process stats", e);
@@ -3244,14 +3259,14 @@ public class ActivityManagerService extends IActivityManager.Stub
     private void start() {
         // 移除所有进程组
         removeAllProcessGroups();
-        // 启动构造函数中创建的 CpuTracker 线程
+        // 启动构造函数中创建的 CpuTracker 线程，监控 cpu 使用情况
         mProcessCpuThread.start();
 
-        // 启动 BatteryStatsService，AppOpsService
+        // 启动 BatteryStatsService，统计电池信息
         mBatteryStatsService.publish();
         mAppOpsService.publish(mContext);
         Slog.d("AppOps", "AppOpsService published");
-        // 启动 LocalService
+        // 启动 LocalService ，将 ActivityManagerInternal 加入服务列表
         LocalServices.addService(ActivityManagerInternal.class, new LocalService());
         // Wait for the synchronized block started in mProcessCpuThread,
         // so that any other acccess to mProcessCpuTracker from main thread
@@ -12965,6 +12980,7 @@ public class ActivityManagerService extends IActivityManager.Stub
                     if ((pi.applicationInfo.flags&ApplicationInfo.FLAG_SYSTEM) == 0) {
                         Slog.w(TAG, "Not installing system proc provider " + pi.name
                                 + ": not system .apk");
+                        // 移除非系统 Provier
                         providers.remove(i);
                     }
                 }
@@ -12981,10 +12997,11 @@ public class ActivityManagerService extends IActivityManager.Stub
         }
 
         mConstants.start(mContext.getContentResolver());
-        // 监控核心设置的变化
+        // 创建 CoreSettingsObserver ，监控核心设置的变化
         mCoreSettingsObserver = new CoreSettingsObserver(this);
-        // 监控字体的变化
+        // 创建 FontScaleSettingObserver，监控字体的变化
         mFontScaleSettingObserver = new FontScaleSettingObserver();
+        // 创建 DevelopmentSettingsObserver
         mDevelopmentSettingsObserver = new DevelopmentSettingsObserver();
         GlobalSettingsToPropertiesMapper.start(mContext.getContentResolver());
 
