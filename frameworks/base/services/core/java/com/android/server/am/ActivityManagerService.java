@@ -2742,6 +2742,7 @@ public class ActivityManagerService extends IActivityManager.Stub
             // 注册 DbBinder
             ServiceManager.addService("dbinfo", new DbBinder(this));
             if (MONITOR_CPU_USAGE) {
+                // 注册 DbBinder
                 ServiceManager.addService("cpuinfo", new CpuBinder(this),
                         /* allowIsolated= */ false, DUMP_FLAG_PRIORITY_CRITICAL);
             }
@@ -2750,7 +2751,7 @@ public class ActivityManagerService extends IActivityManager.Stub
             // 注册进程信息服务 ProcessInfoService
             ServiceManager.addService("processinfo", new ProcessInfoService(this));
 
-            // 获取包名为 android 的应用信息，framework-res.java
+            // 获取包名为 android 的应用信息，framework-res.apk
             ApplicationInfo info = mContext.getPackageManager().getApplicationInfo(
                     "android", STOCK_PM_FLAGS | MATCH_SYSTEM_ONLY);
             mSystemThread.installSystemApplicationInfo(info, getClass().getClassLoader());
@@ -2765,6 +2766,7 @@ public class ActivityManagerService extends IActivityManager.Stub
                 synchronized (mPidsSelfLocked) {
                     mPidsSelfLocked.put(app.pid, app);
                 }
+                // 更新 mLruProcesses
                 updateLruProcessLocked(app, false, null);
                 // 更新进程对应的 oom_adj 值
                 updateOomAdjLocked();
@@ -3073,8 +3075,10 @@ public class ActivityManagerService extends IActivityManager.Stub
         mContext = systemContext;
 
         mFactoryTest = FactoryTest.getMode();
-        mSystemThread = ActivityThread.currentActivityThread(); // ActivityThread 对象
-        mUiContext = mSystemThread.getSystemUiContext(); // ContextImpl 对象
+        // ActivityThread 对象
+        mSystemThread = ActivityThread.currentActivityThread(); 
+        // ContextImpl 对象
+        mUiContext = mSystemThread.getSystemUiContext(); 
 
         Slog.i(TAG, "Memory class: " + ActivityManager.staticGetMemoryClass());
 
@@ -3099,6 +3103,7 @@ public class ActivityManagerService extends IActivityManager.Stub
         mConstants = new ActivityManagerConstants(this, mHandler);
 
         /* static; one-time init here */
+        // 根据优先级 kill 后台程序
         if (sKillHandler == null) {
             sKillThread = new ServiceThread(TAG + ":kill",
                     THREAD_PRIORITY_BACKGROUND, true /* allowIo */);
@@ -3129,7 +3134,7 @@ public class ActivityManagerService extends IActivityManager.Stub
         mAppWarnings = new AppWarnings(this, mUiContext, mHandler, mUiHandler, systemDir);
 
         // TODO: Move creation of battery stats service outside of activity manager service.
-        // 创建 BatteryStatsService
+        // 创建 BatteryStatsService，其信息保存在 /data/system/procstats 中
         // 这里有个 TODO，打算把 BatteryStatsService 的创建移除 AMS
         mBatteryStatsService = new BatteryStatsService(systemContext, systemDir, mHandler);
         mBatteryStatsService.getActiveStatistics().readLocked();
@@ -3143,9 +3148,10 @@ public class ActivityManagerService extends IActivityManager.Stub
 
         mAppOpsService = mInjector.getAppOpsService(new File(systemDir, "appops.xml"), mHandler);
 
-        // 定义 ContentProvider 访问指定Uri数据的权限
+        // 定义 ContentProvider 访问指定 Uri 数据的权限
         mGrantFile = new AtomicFile(new File(systemDir, "urigrants.xml"), "uri-grants");
 
+        // 多用户管理
         mUserController = new UserController(this);
 
         mVrController = new VrController(this);
@@ -3162,7 +3168,7 @@ public class ActivityManagerService extends IActivityManager.Stub
         mTempConfig.setToDefaults();
         mTempConfig.setLocales(LocaleList.getDefault());
         mConfigurationSeq = mTempConfig.seq = 1;
-        // 创建 ActivityStackSupervisor 对象，用于管理 Activity 任务栈
+        // 创建 ActivityStackSupervisor ，用于管理 Activity 任务栈
         mStackSupervisor = createStackSupervisor();
         mStackSupervisor.onConfigurationChanged(mTempConfig);
         mKeyguardController = mStackSupervisor.getKeyguardController();
@@ -3217,13 +3223,14 @@ public class ActivityManagerService extends IActivityManager.Stub
         // hidden api 设置
         mHiddenApiBlacklist = new HiddenApiSettings(mHandler, mContext);
 
-        // 设置 Watchdog
+        // 设置 Watchdog 监控
         Watchdog.getInstance().addMonitor(this);
         Watchdog.getInstance().addThread(mHandler);
 
         // bind background thread to little cores
         // this is expected to fail inside of framework tests because apps can't touch cpusets directly
         // make sure we've already adjusted system_server's internal view of itself first
+        // 更新进程 adj
         updateOomAdjLocked();
         try {
             Process.setThreadGroupAndCpuset(BackgroundThread.get().getThreadId(),
@@ -15249,6 +15256,7 @@ public class ActivityManagerService extends IActivityManager.Stub
                 return;
             }
 
+            // 一系列 systemReady()
             mHasHeavyWeightFeature = mContext.getPackageManager().hasSystemFeature(
                     PackageManager.FEATURE_CANT_SAVE_STATE);
             mLocalDeviceIdleController

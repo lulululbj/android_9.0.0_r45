@@ -870,6 +870,7 @@ public final class SystemServer {
             traceEnd();
 
             traceBeginAndSlog("InstallSystemProviders");
+            // 安装系统 Provider
             mActivityManagerService.installSystemProviders();
             // Now that SettingsProvider is ready, reactivate SQLiteCompatibilityWalFlags
             SQLiteCompatibilityWalFlags.reset();

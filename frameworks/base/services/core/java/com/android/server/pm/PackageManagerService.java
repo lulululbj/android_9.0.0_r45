@@ -2310,8 +2310,10 @@ public class PackageManagerService extends IPackageManager.Stub
         PackageManagerService m = new PackageManagerService(context, installer,
                 factoryTest, onlyCore);
         m.enableSystemUserPackages();
+        // 将 package 服务注册到 ServiceManager
         ServiceManager.addService("package", m);
         final PackageManagerNative pmn = m.new PackageManagerNative();
+        // 将 package_native 服务注册到 ServiceManager
         ServiceManager.addService("package_native", pmn);
         return m;
     }
@@ -2423,8 +2425,10 @@ public class PackageManagerService extends IPackageManager.Stub
             // Expose private service for system components to use.
             LocalServices.addService(
                     PackageManagerInternal.class, new PackageManagerInternalImpl());
+            // 创建用户管理服务 UserManagerService
             sUserManager = new UserManagerService(context, this,
                     new UserDataPreparer(mInstaller, mInstallLock, mContext, mOnlyCore), mPackages);
+            // 创建权限管理服务 PermissionManagerService
             mPermissionManager = PermissionManagerService.create(context,
                     new DefaultPermissionGrantedCallback() {
                         @Override
@@ -2435,6 +2439,7 @@ public class PackageManagerService extends IPackageManager.Stub
                         }
                     }, mPackages /*externalLock*/);
             mDefaultPermissionPolicy = mPermissionManager.getDefaultPermissionGrantPolicy();
+            // 创建 Settings 对象
             mSettings = new Settings(mPermissionManager.getPermissionSettings(), mPackages);
         }
         }
@@ -2485,6 +2490,7 @@ public class PackageManagerService extends IPackageManager.Stub
         getDefaultDisplayMetrics(context, mMetrics);
 
         Trace.traceBegin(TRACE_TAG_PACKAGE_MANAGER, "get system config");
+        // 获取系统配置
         SystemConfig systemConfig = SystemConfig.getInstance();
         mAvailableFeatures = systemConfig.getAvailableFeatures();
         Trace.traceEnd(TRACE_TAG_PACKAGE_MANAGER);
@@ -2494,14 +2500,17 @@ public class PackageManagerService extends IPackageManager.Stub
         synchronized (mInstallLock) {
         // writer
         synchronized (mPackages) {
+            // 创建名为 PackageManager 的线程
             mHandlerThread = new ServiceThread(TAG,
                     Process.THREAD_PRIORITY_BACKGROUND, true /*allowIo*/);
             mHandlerThread.start();
+            // 创建 PackageHandler 对象
             mHandler = new PackageHandler(mHandlerThread.getLooper());
             mProcessLoggingHandler = new ProcessLoggingHandler();
             Watchdog.getInstance().addThread(mHandler, WATCHDOG_TIMEOUT);
             mInstantAppRegistry = new InstantAppRegistry(this);
 
+            // 获取共享库
             ArrayMap<String, String> libConfig = systemConfig.getSharedLibraries();
             final int builtInLibCount = libConfig.size();
             for (int i = 0; i < builtInLibCount; i++) {
@@ -2551,6 +2560,7 @@ public class PackageManagerService extends IPackageManager.Stub
             EventLog.writeEvent(EventLogTags.BOOT_PROGRESS_PMS_SYSTEM_SCAN_START,
                     startTime);
 
+            // 获取环境变量
             final String bootClassPath = System.getenv("BOOTCLASSPATH");
             final String systemServerClassPath = System.getenv("SYSTEMSERVERCLASSPATH");
 
@@ -2562,6 +2572,7 @@ public class PackageManagerService extends IPackageManager.Stub
                 Slog.w(TAG, "No SYSTEMSERVERCLASSPATH found!");
             }
 
+            // /system/framework
             File frameworkDir = new File(Environment.getRootDirectory(), "framework");
 
             final VersionInfo ver = mSettings.getInternalVersion();
@@ -2583,6 +2594,7 @@ public class PackageManagerService extends IPackageManager.Stub
 
             // save off the names of pre-existing system packages prior to scanning; we don't
             // want to automatically grant runtime permissions for new system apps
+            // 处理系统 app 运行时权限
             if (mPromoteSystemApps) {
                 Iterator<PackageSetting> pkgSettingIter = mSettings.mPackages.values().iterator();
                 while (pkgSettingIter.hasNext()) {
@@ -2606,6 +2618,7 @@ public class PackageManagerService extends IPackageManager.Stub
             // Collect vendor/product overlay packages. (Do this before scanning any apps.)
             // For security and version matching reason, only consider
             // overlay packages if they reside in the right directory.
+            // /vendor/overlay
             scanDirTracedLI(new File(VENDOR_OVERLAY_DIR),
                     mDefParseFlags
                     | PackageParser.PARSE_IS_SYSTEM_DIR,
@@ -2613,6 +2626,7 @@ public class PackageManagerService extends IPackageManager.Stub
                     | SCAN_AS_SYSTEM
                     | SCAN_AS_VENDOR,
                     0);
+            // /product/overlay
             scanDirTracedLI(new File(PRODUCT_OVERLAY_DIR),
                     mDefParseFlags
                     | PackageParser.PARSE_IS_SYSTEM_DIR,
@@ -2624,6 +2638,7 @@ public class PackageManagerService extends IPackageManager.Stub
             mParallelPackageParserCallback.findStaticOverlayPackages();
 
             // Find base frameworks (resource packages without code).
+            // /system/frameworks
             scanDirTracedLI(frameworkDir,
                     mDefParseFlags
                     | PackageParser.PARSE_IS_SYSTEM_DIR,
@@ -2634,6 +2649,7 @@ public class PackageManagerService extends IPackageManager.Stub
                     0);
 
             // Collect privileged system packages.
+            // /system/priv-app
             final File privilegedAppDir = new File(Environment.getRootDirectory(), "priv-app");
             scanDirTracedLI(privilegedAppDir,
                     mDefParseFlags
@@ -2644,6 +2660,7 @@ public class PackageManagerService extends IPackageManager.Stub
                     0);
 
             // Collect ordinary system packages.
+            // /system/app
             final File systemAppDir = new File(Environment.getRootDirectory(), "app");
             scanDirTracedLI(systemAppDir,
                     mDefParseFlags
@@ -2653,12 +2670,15 @@ public class PackageManagerService extends IPackageManager.Stub
                     0);
 
             // Collect privileged vendor packages.
+            // /vender/priv-app
             File privilegedVendorAppDir = new File(Environment.getVendorDirectory(), "priv-app");
             try {
                 privilegedVendorAppDir = privilegedVendorAppDir.getCanonicalFile();
             } catch (IOException e) {
                 // failed to look up canonical path, continue with original one
             }
+
+            // /vender/priv-app
             scanDirTracedLI(privilegedVendorAppDir,
                     mDefParseFlags
                     | PackageParser.PARSE_IS_SYSTEM_DIR,
@@ -2669,6 +2689,7 @@ public class PackageManagerService extends IPackageManager.Stub
                     0);
 
             // Collect ordinary vendor packages.
+            // /vender/app
             File vendorAppDir = new File(Environment.getVendorDirectory(), "app");
             try {
                 vendorAppDir = vendorAppDir.getCanonicalFile();
@@ -2685,6 +2706,7 @@ public class PackageManagerService extends IPackageManager.Stub
 
             // Collect privileged odm packages. /odm is another vendor partition
             // other than /vendor.
+            // /odm/priv-app
             File privilegedOdmAppDir = new File(Environment.getOdmDirectory(),
                         "priv-app");
             try {
@@ -2703,6 +2725,7 @@ public class PackageManagerService extends IPackageManager.Stub
 
             // Collect ordinary odm packages. /odm is another vendor partition
             // other than /vendor.
+            // /odm/app
             File odmAppDir = new File(Environment.getOdmDirectory(), "app");
             try {
                 odmAppDir = odmAppDir.getCanonicalFile();
@@ -2718,6 +2741,7 @@ public class PackageManagerService extends IPackageManager.Stub
                     0);
 
             // Collect all OEM packages.
+            // /oem/app
             final File oemAppDir = new File(Environment.getOemDirectory(), "app");
             scanDirTracedLI(oemAppDir,
                     mDefParseFlags
@@ -2728,6 +2752,7 @@ public class PackageManagerService extends IPackageManager.Stub
                     0);
 
             // Collected privileged product packages.
+            // /product/priv-app
             File privilegedProductAppDir = new File(Environment.getProductDirectory(), "priv-app");
             try {
                 privilegedProductAppDir = privilegedProductAppDir.getCanonicalFile();
@@ -2744,6 +2769,7 @@ public class PackageManagerService extends IPackageManager.Stub
                     0);
 
             // Collect ordinary product packages.
+            // /product/app
             File productAppDir = new File(Environment.getProductDirectory(), "app");
             try {
                 productAppDir = productAppDir.getCanonicalFile();
@@ -2759,6 +2785,7 @@ public class PackageManagerService extends IPackageManager.Stub
                     0);
 
             // Prune any system packages that no longer exist.
+            // 删除不存在的系统包
             final List<String> possiblyDeletedUpdatedSystemApps = new ArrayList<>();
             // Stub packages must either be replaced with full versions in the /data
             // partition or be disabled.
@@ -2833,11 +2860,13 @@ public class PackageManagerService extends IPackageManager.Stub
             }
 
             //delete tmp files
+            // 删除临时文件，以 vmdl 开头或者以 .tmp 结尾
             deleteTempPackageFiles();
 
             final int cachedSystemApps = PackageParser.sCachedPackageReadCount.get();
 
             // Remove any shared userIDs that have no associated packages
+            // 删除不相干的共享 userID
             mSettings.pruneSharedUsersLPw();
             final long systemScanTime = SystemClock.uptimeMillis() - startTime;
             final int systemPackagesCount = mPackages.size();
@@ -2853,8 +2882,10 @@ public class PackageManagerService extends IPackageManager.Stub
             if (!mOnlyCore) {
                 EventLog.writeEvent(EventLogTags.BOOT_PROGRESS_PMS_DATA_SCAN_START,
                         SystemClock.uptimeMillis());
+                // /data/app
                 scanDirTracedLI(sAppInstallDir, 0, scanFlags | SCAN_REQUIRE_KNOWN, 0);
 
+                // /data/priv-app
                 scanDirTracedLI(sDrmAppPrivateInstallDir, mDefParseFlags
                         | PackageParser.PARSE_FORWARD_LOCK,
                         scanFlags | SCAN_REQUIRE_KNOWN, 0);
@@ -8398,6 +8429,9 @@ public class PackageManagerService extends IPackageManager.Stub
         return finalList;
     }
 
+    /**
+     * 最后会调用 PackageParser.parsePackage() 方法
+     */
     private void scanDirTracedLI(File scanDir, final int parseFlags, int scanFlags, long currentTime) {
         Trace.traceBegin(TRACE_TAG_PACKAGE_MANAGER, "scanDir [" + scanDir.getAbsolutePath() + "]");
         try {
