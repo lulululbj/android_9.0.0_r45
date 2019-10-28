@@ -3076,9 +3076,9 @@ public class ActivityManagerService extends IActivityManager.Stub
 
         mFactoryTest = FactoryTest.getMode();
         // ActivityThread 对象
-        mSystemThread = ActivityThread.currentActivityThread(); 
+        mSystemThread = ActivityThread.currentActivityThread();
         // ContextImpl 对象
-        mUiContext = mSystemThread.getSystemUiContext(); 
+        mUiContext = mSystemThread.getSystemUiContext();
 
         Slog.i(TAG, "Memory class: " + ActivityManager.staticGetMemoryClass());
 
@@ -3103,7 +3103,7 @@ public class ActivityManagerService extends IActivityManager.Stub
         mConstants = new ActivityManagerConstants(this, mHandler);
 
         /* static; one-time init here */
-        // 根据优先级 kill 后台程序
+        // 根据优先级 kill 后台应用进程
         if (sKillHandler == null) {
             sKillThread = new ServiceThread(TAG + ":kill",
                     THREAD_PRIORITY_BACKGROUND, true /* allowIo */);
