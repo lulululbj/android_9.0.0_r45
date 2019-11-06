@@ -205,6 +205,7 @@ import java.util.Objects;
 
 /**
  * An entry in the history stack, representing an activity.
+ * 一个 ActivityRecord 代表一个 Activity 实例
  */
 final class ActivityRecord extends ConfigurationContainer implements AppWindowContainerListener {
     private static final String TAG = TAG_WITH_CLASS_NAME ? "ActivityRecord" : TAG_AM;

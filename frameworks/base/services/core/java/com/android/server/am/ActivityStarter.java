@@ -230,6 +230,8 @@ class ActivityStarter {
          * 1. last ran starter (for logging and post activity processing)
          * 2. current running starter
          * 3. starter from re-entry in (2)
+         * 
+         * 同时激活的 starter 最多只能有三个。
          */
         private final int MAX_STARTER_COUNT = 3;
 
@@ -255,6 +257,7 @@ class ActivityStarter {
 
         @Override
         public ActivityStarter obtain() {
+            // 从同步对象池 SynchronizedPool 中获取
             ActivityStarter starter = mStarterPool.acquire();
 
             if (starter == null) {
@@ -486,7 +489,7 @@ class ActivityStarter {
         try {
             // TODO(b/64750076): Look into passing request directly to these methods to allow
             // for transactional diffs and preprocessing.
-            if (mRequest.mayWait) {
+            if (mRequest.mayWait) { // setMayWait() 方法中将 mayWait 置为 true
                 return startActivityMayWait(mRequest.caller, mRequest.callingUid,
                         mRequest.callingPackage, mRequest.intent, mRequest.resolvedType,
                         mRequest.voiceSession, mRequest.voiceInteractor, mRequest.resultTo,
@@ -509,6 +512,7 @@ class ActivityStarter {
                         mRequest.originatingPendingIntent);
             }
         } finally {
+            // 回收当前 ActivityStarter 对象
             onExecutionComplete();
         }
     }
@@ -548,6 +552,7 @@ class ActivityStarter {
         mLastStartActivityTimeMs = System.currentTimeMillis();
         mLastStartActivityRecord[0] = null;
 
+        // 调用重载方法
         mLastStartActivityResult = startActivity(caller, intent, ephemeralIntent, resolvedType,
                 aInfo, rInfo, voiceSession, voiceInteractor, resultTo, resultWho, requestCode,
                 callingPid, callingUid, callingPackage, realCallingPid, realCallingUid, startFlags,
@@ -626,9 +631,11 @@ class ActivityStarter {
 
         final int launchFlags = intent.getFlags();
 
+        // 检查 FLAG_ACTIVITY_FORWARD_RESULT 标记
         if ((launchFlags & Intent.FLAG_ACTIVITY_FORWARD_RESULT) != 0 && sourceRecord != null) {
             // Transfer the result target from the source activity to the new
             // one being started, including any failures.
+            // 返回给源 activity 的执行结果将转发给新启动的 activity，包括一些错误
             if (requestCode >= 0) {
                 SafeActivityOptions.abort(options);
                 return ActivityManager.START_FORWARD_AND_REQUEST_CONFLICT;
@@ -661,12 +668,14 @@ class ActivityStarter {
         if (err == ActivityManager.START_SUCCESS && intent.getComponent() == null) {
             // We couldn't find a class that can handle the given Intent.
             // That's the end of that!
+            // 未找到可以处理该 intent 的类
             err = ActivityManager.START_INTENT_NOT_RESOLVED;
         }
 
         if (err == ActivityManager.START_SUCCESS && aInfo == null) {
             // We couldn't find the specific class specified in the Intent.
             // Also the end of the line.
+            // 没有找到 intent 中指定的 Activity 类
             err = ActivityManager.START_CLASS_NOT_FOUND;
         }
 
@@ -722,6 +731,7 @@ class ActivityStarter {
             return err;
         }
 
+        // 权限检查
         boolean abort = !mSupervisor.checkStartAnyActivityPermission(intent, aInfo, resultWho,
                 requestCode, callingPid, callingUid, callingPackage, ignoreTargetSecurity,
                 inTask != null, callerApp, resultRecord, resultStack);
@@ -845,10 +855,12 @@ class ActivityStarter {
             r.appTimeTracker = sourceRecord.appTimeTracker;
         }
 
+        // 获取当前获取焦点的 ActivityStack
         final ActivityStack stack = mSupervisor.mFocusedStack;
 
         // If we are starting an activity that is not from the same uid as the currently resumed
         // one, check whether app switches are allowed.
+        // 如果启动一个和当前处于 resume 状态的 activity 不同 uid 的新 activity，要检查是否允许 app 切换
         if (voiceSession == null && (stack.getResumedActivity() == null
                 || stack.getResumedActivity().info.applicationInfo.uid != realCallingUid)) {
             if (!mService.checkAppSwitchAllowedLocked(callingPid, callingUid,
@@ -856,6 +868,7 @@ class ActivityStarter {
                 mController.addPendingActivityLaunch(new PendingActivityLaunch(r,
                         sourceRecord, startFlags, stack, callerApp));
                 ActivityOptions.abort(checkedOptions);
+                // 不允许切换，直接返回
                 return ActivityManager.START_SWITCHES_CANCELED;
             }
         }
@@ -876,6 +889,7 @@ class ActivityStarter {
         maybeLogActivityStart(callingUid, callingPackage, realCallingUid, intent, callerApp, r,
                 originatingPendingIntent);
 
+        // 调用重载方法
         return startActivity(r, sourceRecord, voiceSession, voiceInteractor, startFlags,
                 true /* doResume */, checkedOptions, inTask, outActivity);
     }
@@ -1030,6 +1044,7 @@ class ActivityStarter {
         // Save a copy in case ephemeral needs it
         final Intent ephemeralIntent = new Intent(intent);
         // Don't modify the client's object!
+        // 重新创建，不修改客户端原来的 intent
         intent = new Intent(intent);
         if (componentSpecified
                 && !(Intent.ACTION_VIEW.equals(intent.getAction()) && intent.getData() == null)
@@ -1044,6 +1059,7 @@ class ActivityStarter {
             componentSpecified = false;
         }
 
+        // 获取 ResolveInfo
         ResolveInfo rInfo = mSupervisor.resolveIntent(intent, resolvedType, userId,
                 0 /* matchFlags */,
                         computeResolveFilterUid(
@@ -1075,6 +1091,7 @@ class ActivityStarter {
             }
         }
         // Collect information about the target of the Intent.
+        // 获取目标 Intent 的 ActivityInfo
         ActivityInfo aInfo = mSupervisor.resolveActivity(intent, rInfo, startFlags, profilerInfo);
 
         synchronized (mService) {
@@ -1153,6 +1170,7 @@ class ActivityStarter {
             }
 
             final ActivityRecord[] outRecord = new ActivityRecord[1];
+            // 调用 startActivity() 方法
             int res = startActivity(caller, intent, ephemeralIntent, resolvedType, aInfo, rInfo,
                     voiceSession, voiceInteractor, resultTo, resultWho, requestCode, callingPid,
                     callingUid, callingPackage, realCallingPid, realCallingUid, startFlags, options,
@@ -1253,6 +1271,7 @@ class ActivityStarter {
                 ActivityRecord[] outActivity) {
         int result = START_CANCELED;
         try {
+            // 延时布局
             mService.mWindowManager.deferSurfaceLayout();
             result = startActivityUnchecked(r, sourceRecord, voiceSession, voiceInteractor,
                     startFlags, doResume, options, inTask, outActivity);
@@ -1265,6 +1284,7 @@ class ActivityStarter {
                 stack.finishActivityLocked(mStartActivity, RESULT_CANCELED,
                         null /* intentResultData */, "startActivity", true /* oomAdj */);
             }
+            // 恢复布局
             mService.mWindowManager.continueSurfaceLayout();
         }
 
@@ -1274,18 +1294,22 @@ class ActivityStarter {
     }
 
     // Note: This method should only be called from {@link startActivity}.
+    // r 是要启动的 Activity，sourceRecord 是调用者
     private int startActivityUnchecked(final ActivityRecord r, ActivityRecord sourceRecord,
             IVoiceInteractionSession voiceSession, IVoiceInteractor voiceInteractor,
             int startFlags, boolean doResume, ActivityOptions options, TaskRecord inTask,
             ActivityRecord[] outActivity) {
 
+        // 设置启动 Activity 的初始状态
         setInitialState(r, options, inTask, doResume, startFlags, sourceRecord, voiceSession,
                 voiceInteractor);
 
+        // 计算 mLaunchFlags ，启动标志位
         computeLaunchingTaskFlags();
 
         computeSourceStack();
 
+        // 设置启动标志位
         mIntent.setFlags(mLaunchFlags);
 
         ActivityRecord reusedActivity = getReusableIntentActivity();
@@ -1309,6 +1333,7 @@ class ActivityStarter {
             }
         }
 
+        // 不等于 null 说明新的 activity 应该插入已存在的任务栈中
         if (reusedActivity != null) {
             // When the flags NEW_TASK and CLEAR_TASK are set, then the task gets reused but
             // still needs to be a lock task mode violation since the task gets cleared out and
@@ -1368,6 +1393,7 @@ class ActivityStarter {
                         // so make sure the task now has the identity of the new intent.
                         top.getTask().setIntent(mStartActivity);
                     }
+                    // 触发 onNewIntent()
                     deliverNewIntent(top);
                 }
             }
@@ -1446,6 +1472,7 @@ class ActivityStarter {
                 return START_RETURN_INTENT_TO_CALLER;
             }
 
+            // 触发 onNewIntent()
             deliverNewIntent(top);
 
             // Don't use mStartActivity.task to show the toast. We're not starting a new activity
@@ -1825,6 +1852,7 @@ class ActivityStarter {
     /**
      * Decide whether the new activity should be inserted into an existing task. Returns null
      * if not or an ActivityRecord with the task into which the new activity should be added.
+     * 判断新的 activity 是否应该插入已存在的任务栈
      */
     private ActivityRecord getReusableIntentActivity() {
         // We may want to try to place the new activity in to an existing task.  We always

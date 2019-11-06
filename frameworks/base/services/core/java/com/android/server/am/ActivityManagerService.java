@@ -4132,12 +4132,14 @@ public class ActivityManagerService extends IActivityManager.Stub
         long startTime = SystemClock.elapsedRealtime();
         ProcessRecord app;
         if (!isolated) {
+            // 根据进程名和 uid 获取相应的 ProcessRecord
             app = getProcessRecordLocked(processName, info.uid, keepIfLarge);
             checkTime(startTime, "startProcess: after getProcessRecord");
 
             if ((intentFlags & Intent.FLAG_FROM_BACKGROUND) != 0) {
                 // If we are in the background, then check to see if this process
                 // is bad.  If so, we will just silently fail.
+                // 如果是后台进程，检测是否是 bad process
                 if (mAppErrors.isBadProcessLocked(info)) {
                     if (DEBUG_PROCESSES) Slog.v(TAG, "Bad process: " + info.uid
                             + "/" + info.processName);
@@ -4148,6 +4150,7 @@ public class ActivityManagerService extends IActivityManager.Stub
                 // crash count so that we won't make it bad until they see at
                 // least one crash dialog again, and make the process good again
                 // if it had been bad.
+                // 如果用户显示启动一个进程，那么需要清空 crash 计数。
                 if (DEBUG_PROCESSES) Slog.v(TAG, "Clearing bad process: " + info.uid
                         + "/" + info.processName);
                 mAppErrors.resetProcessCrashTimeLocked(info);
@@ -4163,6 +4166,7 @@ public class ActivityManagerService extends IActivityManager.Stub
             }
         } else {
             // If this is an isolated process, it can't re-use an existing process.
+            // 孤立进程，无法被重用
             app = null;
         }
 
@@ -4201,6 +4205,7 @@ public class ActivityManagerService extends IActivityManager.Stub
 
         if (app == null) {
             checkTime(startTime, "startProcess: creating new process record");
+            // 新建 ProcessRecord
             app = newProcessRecordLocked(info, processName, isolated, isolatedUid);
             if (app == null) {
                 Slog.w(TAG, "Failed making new process record for "
@@ -4219,6 +4224,7 @@ public class ActivityManagerService extends IActivityManager.Stub
 
         // If the system is not ready yet, then hold off on starting this
         // process until it is.
+        // 如果系统未准备完毕，则将当前进程加入到 mProcessesOnHold
         if (!mProcessesReady
                 && !isAllowedWhileBooting(info)
                 && !allowWhileBooting) {
@@ -5162,7 +5168,7 @@ public class ActivityManagerService extends IActivityManager.Stub
                 Binder.getCallingPid(), Binder.getCallingUid(), "startActivityAsUser");
 
         // TODO: Switch to user app stacks here.
-        return mActivityStartController.obtainStarter(intent, "startActivityAsUser")
+        return mActivityStartController.obtainStarter(intent, "startActivityAsUser") // 获取 ActivityStarter 对象
                 .setCaller(caller)
                 .setCallingPackage(callingPackage)
                 .setResolvedType(resolvedType)

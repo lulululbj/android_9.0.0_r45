@@ -190,6 +190,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
+/**
+ * 管理 ActivityStack
+ */
 public class ActivityStackSupervisor extends ConfigurationContainer implements DisplayListener,
         RecentTasks.Callbacks {
     private static final String TAG = TAG_WITH_CLASS_NAME ? "ActivityStackSupervisor" : TAG_AM;
@@ -333,7 +336,10 @@ public class ActivityStackSupervisor extends ConfigurationContainer implements D
     int mCurrentUser;
 
     /** The stack containing the launcher app. Assumed to always be attached to
-     * Display.DEFAULT_DISPLAY. */
+     * Display.DEFAULT_DISPLAY. 
+     *
+     * Launcher app 的 ActivityStack 
+     */
     ActivityStack mHomeStack;
 
     /** The stack currently receiving input or launching the next activity. */
@@ -1306,6 +1312,7 @@ public class ActivityStackSupervisor extends ConfigurationContainer implements D
                     aInfo.applicationInfo.packageName, aInfo.name));
 
             // Don't debug things in the system process
+            // 对非 system 进程设置 debug 信息
             if (!aInfo.processName.equals("system")) {
                 if ((startFlags & ActivityManager.START_FLAG_DEBUG) != 0) {
                     mService.setDebugApp(aInfo.processName, true, false);
@@ -1350,6 +1357,7 @@ public class ActivityStackSupervisor extends ConfigurationContainer implements D
                 // (e.g. AMS.startActivityAsUser).
                 final long token = Binder.clearCallingIdentity();
                 try {
+                    // 最终调用 PackageManagerService.resolveIntent()
                     return mService.getPackageManagerInternalLocked().resolveIntent(
                             intent, resolvedType, modifiedFlags, userId, true, filterCallingUid);
                 } finally {
@@ -1367,6 +1375,7 @@ public class ActivityStackSupervisor extends ConfigurationContainer implements D
         return resolveActivity(intent, rInfo, startFlags, profilerInfo);
     }
 
+    // 应用进程已启动
     final boolean realStartActivityLocked(ActivityRecord r, ProcessRecord app,
             boolean andResume, boolean checkConfig) throws RemoteException {
 
@@ -1374,6 +1383,7 @@ public class ActivityStackSupervisor extends ConfigurationContainer implements D
             // While there are activities pausing we skipping starting any new activities until
             // pauses are complete. NOTE: that we also do this for activities that are starting in
             // the paused state because they will first be resumed then paused on the client side.
+            // 直到所有的 onPause() 执行结束才会去启动新的 activity
             if (DEBUG_SWITCH || DEBUG_PAUSE || DEBUG_STATES) Slog.v(TAG_PAUSE,
                     "realStartActivityLocked: Skipping start of r=" + r
                     + " some activities pausing...");
@@ -1439,6 +1449,7 @@ public class ActivityStackSupervisor extends ConfigurationContainer implements D
             if (idx < 0) {
                 app.activities.add(r);
             }
+            // 更新进程 oom-adj 值
             mService.updateLruProcessLocked(app, true, null);
             mService.updateOomAdjLocked();
 
@@ -1563,6 +1574,7 @@ public class ActivityStackSupervisor extends ConfigurationContainer implements D
                 if (r.launchFailed) {
                     // This is the second time we failed -- finish activity
                     // and give up.
+                    // 第二次启动失败，finish activity
                     Slog.e(TAG, "Second failure launching "
                             + r.intent.getComponent().flattenToShortString()
                             + ", giving up", e);
@@ -1574,6 +1586,7 @@ public class ActivityStackSupervisor extends ConfigurationContainer implements D
 
                 // This is the first time we failed -- restart process and
                 // retry.
+                // 第一次失败，重启进程并重试
                 r.launchFailed = true;
                 app.activities.remove(r);
                 throw e;
@@ -1681,6 +1694,7 @@ public class ActivityStackSupervisor extends ConfigurationContainer implements D
         ProcessRecord app = mService.getProcessRecordLocked(r.processName,
                 r.info.applicationInfo.uid, true);
 
+        // 应用进程已经存在
         if (app != null && app.thread != null) {
             try {
                 if ((r.info.flags&ActivityInfo.FLAG_MULTIPROCESS) == 0
@@ -1703,6 +1717,7 @@ public class ActivityStackSupervisor extends ConfigurationContainer implements D
             // restart the application.
         }
 
+        // 应用进程不存在则创建进程
         mService.startProcessLocked(r.processName, r.info.applicationInfo, true, 0,
                 "activity", r.intent.getComponent(), false, false, true);
     }

@@ -130,6 +130,8 @@ public class ActivityStartController {
     }
 
     /**
+     * 工厂模式
+     * 
      * @return A starter to configure and execute starting an activity. It is valid until after
      *         {@link ActivityStarter#execute} is invoked. At that point, the starter should be
      *         considered invalid and no longer modified or used.

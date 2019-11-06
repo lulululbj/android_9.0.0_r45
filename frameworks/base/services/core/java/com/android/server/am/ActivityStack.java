@@ -167,6 +167,8 @@ import java.util.Set;
 
 /**
  * State and management of a single stack of activities.
+ * 管理一个独立的 Activity 任务栈
+ * 其成员变量 mTaskHistory 是一个 ArrayList<TaskRecord>
  */
 class ActivityStack<T extends StackWindowController> extends ConfigurationContainer
         implements StackWindowListener {
@@ -1424,6 +1426,7 @@ class ActivityStack<T extends StackWindowController> extends ConfigurationContai
         ActivityRecord prev = mResumedActivity;
 
         if (prev == null) {
+            // 没有 onResume 的 Activity，无需执行 pause
             if (resuming == null) {
                 Slog.wtf(TAG, "Trying to pause when nothing is resumed");
                 mStackSupervisor.resumeFocusedStackTopActivityLocked();
@@ -1457,6 +1460,7 @@ class ActivityStack<T extends StackWindowController> extends ConfigurationContai
                         prev.shortComponentName, "userLeaving=" + userLeaving);
                 mService.updateUsageStats(prev, false);
 
+                // 通过 ClientLifecycleManager 分发生命周期事件
                 mService.getLifecycleManager().scheduleTransaction(prev.app.thread, prev.appToken,
                         PauseActivityItem.obtain(prev.finishing, userLeaving,
                                 prev.configChangeFlags, pauseImmediately));
@@ -2289,6 +2293,7 @@ class ActivityStack<T extends StackWindowController> extends ConfigurationContai
     boolean resumeTopActivityUncheckedLocked(ActivityRecord prev, ActivityOptions options) {
         if (mStackSupervisor.inResumeTopActivity) {
             // Don't even start recursing.
+            // 防止递归启动
             return false;
         }
 
@@ -2449,6 +2454,7 @@ class ActivityStack<T extends StackWindowController> extends ConfigurationContai
         if (mResumedActivity != null) {
             if (DEBUG_STATES) Slog.d(TAG_STATES,
                     "resumeTopActivityLocked: Pausing " + mResumedActivity);
+            // 当有其他 Activity 正处于 onResume()，先暂停它
             pausing |= startPausingLocked(userLeaving, false, next, false);
         }
         if (pausing && !resumeWhilePausing) {
@@ -2874,6 +2880,7 @@ class ActivityStack<T extends StackWindowController> extends ConfigurationContai
             // Last activity in task had been removed or ActivityManagerService is reusing task.
             // Insert or replace.
             // Might not even be in.
+            // 任务栈中的上一个 activity 已经被移除或者 AMS 重用了这个任务栈
             insertTaskAtTop(rTask, r);
         }
         TaskRecord task = null;

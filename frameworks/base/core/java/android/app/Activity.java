@@ -5272,7 +5272,7 @@ public class Activity extends ContextThemeWrapper
             intent.putExtra(Intent.EXTRA_REFERRER, referrer);
         }
         options = transferSpringboardActivityOptions(options);
-        Instrumentation.ActivityResult ar =
+        Instrumentation.ActivityResult ar = 
             mInstrumentation.execStartActivity(
                 this, mMainThread.getApplicationThread(), mToken, who,
                 intent, requestCode, options);

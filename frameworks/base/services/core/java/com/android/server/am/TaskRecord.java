@@ -128,6 +128,9 @@ import java.lang.annotation.RetentionPolicy;
 import java.util.ArrayList;
 import java.util.Objects;
 
+/**
+ * 管理 ActivityRecord
+ */
 class TaskRecord extends ConfigurationContainer implements TaskWindowContainerListener {
     private static final String TAG = TAG_WITH_CLASS_NAME ? "TaskRecord" : TAG_AM;
     private static final String TAG_ADD_REMOVE = TAG + POSTFIX_ADD_REMOVE;

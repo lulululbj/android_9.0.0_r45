@@ -1541,6 +1541,7 @@ public final class ActivityThread extends ClientTransactionHandler {
 
         @Override
         public void scheduleTransaction(ClientTransaction transaction) throws RemoteException {
+            // 这里调用的是父类 ClientTransactionHandler 的 scheduleTransaction() 方法
             ActivityThread.this.scheduleTransaction(transaction);
         }
     }
@@ -2850,6 +2851,7 @@ public final class ActivityThread extends ClientTransactionHandler {
                     Context.CONTEXT_INCLUDE_CODE);
         }
 
+        // 获取 ComponentName
         ComponentName component = r.intent.getComponent();
         if (component == null) {
             component = r.intent.resolveActivity(
@@ -2862,10 +2864,12 @@ public final class ActivityThread extends ClientTransactionHandler {
                     r.activityInfo.targetActivity);
         }
 
+        // 获取 Context
         ContextImpl appContext = createBaseContextForActivity(r);
         Activity activity = null;
         try {
             java.lang.ClassLoader cl = appContext.getClassLoader();
+            // 获取 Activity
             activity = mInstrumentation.newActivity(
                     cl, component.getClassName(), r.intent);
             StrictMode.incrementExpectedActivityCount(activity.getClass());
@@ -2883,6 +2887,7 @@ public final class ActivityThread extends ClientTransactionHandler {
         }
 
         try {
+            // 获取 Application
             Application app = r.packageInfo.makeApplication(false, mInstrumentation);
 
             if (localLOGV) Slog.v(TAG, "Performing launch of " + r);
@@ -2921,10 +2926,12 @@ public final class ActivityThread extends ClientTransactionHandler {
                 activity.mStartedActivity = false;
                 int theme = r.activityInfo.getThemeResource();
                 if (theme != 0) {
+                    // 设置主题
                     activity.setTheme(theme);
                 }
 
                 activity.mCalled = false;
+                // 执行 onCreate()
                 if (r.isPersistable()) {
                     mInstrumentation.callActivityOnCreate(activity, r.state, r.persistentState);
                 } else {
