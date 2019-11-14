@@ -1307,6 +1307,7 @@ class ActivityStarter {
         // 计算 mLaunchFlags ，启动标志位
         computeLaunchingTaskFlags();
 
+        // 计算 mSourceStack
         computeSourceStack();
 
         // 设置启动标志位
@@ -1368,6 +1369,7 @@ class ActivityStarter {
             // This code path leads to delivering a new intent, we want to make sure we schedule it
             // as the first operation, in case the activity will be resumed as a result of later
             // operations.
+            // FLAG_ACTIVITY_CLEAR_TOP、LAUNCH_SINGLE_INSTANCE、LAUNCH_SINGLE_TASK
             if ((mLaunchFlags & FLAG_ACTIVITY_CLEAR_TOP) != 0
                     || isDocumentLaunchesIntoExisting(mLaunchFlags)
                     || isLaunchModeOneOf(LAUNCH_SINGLE_INSTANCE, LAUNCH_SINGLE_TASK)) {
@@ -1376,6 +1378,7 @@ class ActivityStarter {
                 // In this situation we want to remove all activities from the task up to the one
                 // being started. In most cases this means we are resetting the task to its initial
                 // state.
+                // 清空任务栈
                 final ActivityRecord top = task.performClearTaskForReuseLocked(mStartActivity,
                         mLaunchFlags);
 
@@ -1483,6 +1486,7 @@ class ActivityStarter {
             return START_DELIVERED_TO_TOP;
         }
 
+        // 是否创建新的 task
         boolean newTask = false;
         final TaskRecord taskToAffiliate = (mLaunchTaskBehind && mSourceRecord != null)
                 ? mSourceRecord.getTask() : null;
@@ -1494,6 +1498,7 @@ class ActivityStarter {
             newTask = true;
             result = setTaskFromReuseOrCreateNewTask(taskToAffiliate, topStack);
         } else if (mSourceRecord != null) {
+            // 计算 mTargetStack
             result = setTaskFromSourceRecord();
         } else if (mInTask != null) {
             result = setTaskFromInTask();
@@ -1520,6 +1525,7 @@ class ActivityStarter {
 
         mSupervisor.sendPowerHintForLaunchStartIfNeeded(false /* forceSend */, mStartActivity);
 
+        // 将要启动的 Activity 在 Task 中置顶
         mTargetStack.startActivityLocked(mStartActivity, topFocused, newTask, mKeepCurTransition,
                 mOptions);
         if (mDoResume) {
