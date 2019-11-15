@@ -988,6 +988,7 @@ public class ActivityStackSupervisor extends ConfigurationContainer implements D
                     if (activity.app == null && app.uid == activity.info.applicationInfo.uid
                             && processName.equals(activity.processName)) {
                         try {
+                            // 启动 Activity
                             if (realStartActivityLocked(activity, app,
                                     top == activity /* andResume */, true /* checkConfig */)) {
                                 didSomething = true;
@@ -1691,6 +1692,7 @@ public class ActivityStackSupervisor extends ConfigurationContainer implements D
     void startSpecificActivityLocked(ActivityRecord r,
             boolean andResume, boolean checkConfig) {
         // Is this activity's application already running?
+        // 通过 AMS 查找进程是否已存在
         ProcessRecord app = mService.getProcessRecordLocked(r.processName,
                 r.info.applicationInfo.uid, true);
 
@@ -2231,10 +2233,12 @@ public class ActivityStackSupervisor extends ConfigurationContainer implements D
             return false;
         }
 
+        // 目标 Stack 就是 mFocusedStack
         if (targetStack != null && isFocusedStack(targetStack)) {
             return targetStack.resumeTopActivityUncheckedLocked(target, targetOptions);
         }
 
+        // 获取 mFocusedStack 栈顶的 ActivityRecord
         final ActivityRecord r = mFocusedStack.topRunningActivityLocked();
         if (r == null || !r.isState(RESUMED)) {
             mFocusedStack.resumeTopActivityUncheckedLocked(null, null);

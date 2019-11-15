@@ -596,6 +596,7 @@ class ActivityStarter {
 
         ProcessRecord callerApp = null;
         if (caller != null) {
+            // caller 不为空时，通过 AMS 查找 ProcessRecord
             callerApp = mService.getRecordForAppLocked(caller);
             if (callerApp != null) {
                 callingPid = callerApp.pid;
@@ -616,6 +617,9 @@ class ActivityStarter {
                     + "} from uid " + callingUid);
         }
 
+        // sourceRecord 用于描述发起本次请求的 Activity
+        // resultRecord 用户描述接收启动结果的 Activity
+        // 一般情况下，这两个 Activity 应该是同一个
         ActivityRecord sourceRecord = null;
         ActivityRecord resultRecord = null;
         if (resultTo != null) {
@@ -629,6 +633,7 @@ class ActivityStarter {
             }
         }
 
+        // 获取启动标志
         final int launchFlags = intent.getFlags();
 
         // 检查 FLAG_ACTIVITY_FORWARD_RESULT 标记
@@ -841,6 +846,7 @@ class ActivityStarter {
             aInfo = mSupervisor.resolveActivity(intent, rInfo, startFlags, null /*profilerInfo*/);
         }
 
+        // 构建 ActivityRecord
         ActivityRecord r = new ActivityRecord(mService, callerApp, callingPid, callingUid,
                 callingPackage, intent, resolvedType, aInfo, mService.getGlobalConfiguration(),
                 resultRecord, resultWho, requestCode, componentSpecified, voiceSession != null,
@@ -1196,6 +1202,7 @@ class ActivityStarter {
             // will then wait for the windows to be drawn and populate WaitResult.
             mSupervisor.getActivityMetricsLogger().notifyActivityLaunched(res, outRecord[0]);
             if (outResult != null) {
+                // 设置启动结果
                 outResult.result = res;
 
                 final ActivityRecord r = outRecord[0];
@@ -1205,6 +1212,7 @@ class ActivityStarter {
                         mSupervisor.mWaitingActivityLaunched.add(outResult);
                         do {
                             try {
+                                // 等待启动结果
                                 mService.wait();
                             } catch (InterruptedException e) {
                             }

@@ -915,6 +915,7 @@ public final class ActivityThread extends ClientTransactionHandler {
             data.initProfilerInfo = profilerInfo;
             data.buildSerial = buildSerial;
             data.autofillCompatibilityEnabled = autofillCompatibilityEnabled;
+            // 向主线程发送消息 H.BIND_APPLICATION
             sendMessage(H.BIND_APPLICATION, data);
         }
 
@@ -1858,6 +1859,7 @@ public final class ActivityThread extends ClientTransactionHandler {
                         (a.activity != null && a.activity.mFinished));
                     if (a.activity != null && !a.activity.mFinished) {
                         try {
+                            // 调用 AMS.activityIdle()
                             am.activityIdle(a.token, a.createdConfig, stopProfiling);
                             a.createdConfig = null;
                         } catch (RemoteException ex) {
@@ -2869,7 +2871,7 @@ public final class ActivityThread extends ClientTransactionHandler {
         Activity activity = null;
         try {
             java.lang.ClassLoader cl = appContext.getClassLoader();
-            // 获取 Activity
+            // 反射创建 Activity
             activity = mInstrumentation.newActivity(
                     cl, component.getClassName(), r.intent);
             StrictMode.incrementExpectedActivityCount(activity.getClass());
@@ -3967,6 +3969,7 @@ public final class ActivityThread extends ClientTransactionHandler {
         r.nextIdle = mNewActivities;
         mNewActivities = r;
         if (localLOGV) Slog.v(TAG, "Scheduling idle handler for " + r);
+        // 主线程空闲时会执行 Idler
         Looper.myQueue().addIdleHandler(new Idler());
     }
 
@@ -4063,6 +4066,7 @@ public final class ActivityThread extends ClientTransactionHandler {
 
         try {
             r.activity.mCalled = false;
+            // 调用 Activity.onPause()
             mInstrumentation.callActivityOnPause(r.activity);
             if (!r.activity.mCalled) {
                 throw new SuperNotCalledException("Activity " + safeToComponentShortString(r.intent)
@@ -5618,6 +5622,7 @@ public final class ActivityThread extends ClientTransactionHandler {
         }
 
         // send up app name; do this *before* waiting for debugger
+        // 设置进程名，之前一直是 <pre_initialized>
         Process.setArgV0(data.processName);
         android.ddm.DdmHandleAppName.setAppName(data.processName,
                                                 UserHandle.myUserId());
@@ -5631,6 +5636,8 @@ public final class ActivityThread extends ClientTransactionHandler {
         // implementation to use the pool executor.  Normally, we use the
         // serialized executor as the default. This has to happen in the
         // main thread so the main looper is set right.
+        // 目标 sdk 小于等于 12，AsyncTask 实现使用 pool executor
+        // 正常情况下使用 serialized executor
         if (data.appInfo.targetSdkVersion <= android.os.Build.VERSION_CODES.HONEYCOMB_MR1) {
             AsyncTask.setDefaultExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
         }
@@ -5649,14 +5656,19 @@ public final class ActivityThread extends ClientTransactionHandler {
          * This needs to be done because the system time zone could have changed after the
          * the spawning of this process. Without doing this this process would have the incorrect
          * system time zone.
+         * 
+         * 设置时区
          */
         TimeZone.setDefault(null);
 
         /*
          * Set the LocaleList. This may change once we create the App Context.
+         * 
+         * 设置语言列表
          */
         LocaleList.setDefault(data.config.getLocales());
 
+        // 资源相关设置
         synchronized (mResourcesManager) {
             /*
              * Update the system configuration since its preloaded and might not
@@ -5686,6 +5698,7 @@ public final class ActivityThread extends ClientTransactionHandler {
         }
         updateDefaultDensity();
 
+        // 是否使用 24小时制
         final String use24HourSetting = mCoreSettings.getString(Settings.System.TIME_12_24);
         Boolean is24Hr = null;
         if (use24HourSetting != null) {
@@ -5706,6 +5719,7 @@ public final class ActivityThread extends ClientTransactionHandler {
         // SDK can see it. Since access to the serial is now behind a
         // permission we push down the value and here we fix it up
         // before any app code has been loaded.
+        // 反射获取 SERIAL
         try {
             Field field = Build.class.getDeclaredField("SERIAL");
             field.setAccessible(true);
@@ -5752,6 +5766,7 @@ public final class ActivityThread extends ClientTransactionHandler {
 
         /**
          * Initialize the default http proxy in this process for the reasons we set the time zone.
+         * 代理设置
          */
         Trace.traceBegin(Trace.TRACE_TAG_ACTIVITY_MANAGER, "Setup proxies");
         final IBinder b = ServiceManager.getService(Context.CONNECTIVITY_SERVICE);
@@ -5803,6 +5818,7 @@ public final class ActivityThread extends ClientTransactionHandler {
             ii = null;
         }
 
+        // 获取 ContextImpl
         final ContextImpl appContext = ContextImpl.createAppContext(this, data.info);
         updateLocaleListFromAppContext(appContext,
                 mResourcesManager.getConfiguration().getLocales());
@@ -5849,6 +5865,7 @@ public final class ActivityThread extends ClientTransactionHandler {
             }
             ii.copyTo(instrApp);
             instrApp.initForUser(UserHandle.myUserId());
+            // 创建 LoadedApk 对象
             final LoadedApk pi = getPackageInfo(instrApp, data.compatInfo,
                     appContext.getClassLoader(), false, true, false);
             final ContextImpl instrContext = ContextImpl.createAppContext(this, pi);
@@ -5879,6 +5896,7 @@ public final class ActivityThread extends ClientTransactionHandler {
             mInstrumentation.basicInit(this);
         }
 
+        // 如果声明了 FLAG_LARGE_HEAP，则清除虚拟机内存限制
         if ((data.appInfo.flags&ApplicationInfo.FLAG_LARGE_HEAP) != 0) {
             dalvik.system.VMRuntime.getRuntime().clearGrowthLimit();
         } else {
@@ -5896,6 +5914,7 @@ public final class ActivityThread extends ClientTransactionHandler {
         try {
             // If the app is being launched for full backup or restore, bring it up in
             // a restricted environment with the base application class.
+            // 创建 Application 对象
             app = data.info.makeApplication(data.restrictedBackupMode, null);
 
             // Propagate autofill compat state
@@ -5907,6 +5926,7 @@ public final class ActivityThread extends ClientTransactionHandler {
             // app's custom Application class
             if (!data.restrictedBackupMode) {
                 if (!ArrayUtils.isEmpty(data.providers)) {
+                    // 安装 ContentProvider
                     installContentProviders(app, data.providers);
                     // For process that contains content providers, we want to
                     // ensure that the JIT is enabled "at some point".
@@ -5925,6 +5945,7 @@ public final class ActivityThread extends ClientTransactionHandler {
                     + data.instrumentationName + ": " + e.toString(), e);
             }
             try {
+                // 调用 Application 的 onCreate() 方法
                 mInstrumentation.callApplicationOnCreate(app);
             } catch (Exception e) {
                 if (!mInstrumentation.onException(app, e)) {
@@ -6545,8 +6566,10 @@ public final class ActivityThread extends ClientTransactionHandler {
             android.ddm.DdmHandleAppName.setAppName("<pre-initialized>",
                                                     UserHandle.myUserId());
             RuntimeInit.setApplicationObject(mAppThread.asBinder());
+            // 获取和 AMS 交互的 Binder 客户端
             final IActivityManager mgr = ActivityManager.getService();
             try {
+                // 调用 AMS 的 attachApplication()
                 mgr.attachApplication(mAppThread, startSeq);
             } catch (RemoteException ex) {
                 throw ex.rethrowFromSystemServer();
@@ -6694,9 +6717,11 @@ public final class ActivityThread extends ClientTransactionHandler {
         final File configDir = Environment.getUserConfigDirectory(UserHandle.myUserId());
         TrustedCertificateStore.setDefaultUserDirectory(configDir);
 
+        // 设置进程名为 <pre-initialized>
         Process.setArgV0("<pre-initialized>");
 
-        Looper.prepareMainLooper(); // 创建主线程 Looper
+        // 创建主线程 Looper
+        Looper.prepareMainLooper(); 
 
         // Find the value for {@link #PROC_START_SEQ_IDENT} if provided on the command line.
         // It will be in the format "seq=114"
@@ -6709,6 +6734,7 @@ public final class ActivityThread extends ClientTransactionHandler {
                 }
             }
         }
+        // 创建 ActivityThread ，并 attach(false)
         ActivityThread thread = new ActivityThread();
         thread.attach(false, startSeq);
 
@@ -6723,6 +6749,7 @@ public final class ActivityThread extends ClientTransactionHandler {
 
         // End of event ActivityThreadMain.
         Trace.traceEnd(Trace.TRACE_TAG_ACTIVITY_MANAGER);
+        // 开启主线程消息循环
         Looper.loop();
 
         throw new RuntimeException("Main thread loop unexpectedly exited");

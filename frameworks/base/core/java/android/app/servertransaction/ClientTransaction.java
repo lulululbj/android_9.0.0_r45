@@ -126,6 +126,7 @@ public class ClientTransaction implements Parcelable, ObjectPoolItem {
      *    all callbacks and necessary lifecycle transitions.
      */
     public void schedule() throws RemoteException {
+        // 调用 ApplicationThread.scheduleTransaction()
         mClient.scheduleTransaction(this);
     }
 

@@ -1461,6 +1461,7 @@ class ActivityStack<T extends StackWindowController> extends ConfigurationContai
                 mService.updateUsageStats(prev, false);
 
                 // 通过 ClientLifecycleManager 分发生命周期事件
+                // 最终会向 H 发送 EXECUTE_TRANSACTION 事件
                 mService.getLifecycleManager().scheduleTransaction(prev.app.thread, prev.appToken,
                         PauseActivityItem.obtain(prev.finishing, userLeaving,
                                 prev.configChangeFlags, pauseImmediately));
@@ -2342,6 +2343,7 @@ class ActivityStack<T extends StackWindowController> extends ConfigurationContai
     private boolean resumeTopActivityInnerLocked(ActivityRecord prev, ActivityOptions options) {
         if (!mService.mBooting && !mService.mBooted) {
             // Not ready yet!
+            // AMS 还未启动完成
             return false;
         }
 
@@ -2366,6 +2368,7 @@ class ActivityStack<T extends StackWindowController> extends ConfigurationContai
 
         if (!hasRunningActivity) {
             // There are no activities left in the stack, let's look somewhere else.
+            // 当前 Stack 没有 activity，就去找下一个 stack。可能会启动 Home 应用
             return resumeTopActivityInNextFocusableStack(prev, options, "noMoreActivities");
         }
 
@@ -2409,6 +2412,7 @@ class ActivityStack<T extends StackWindowController> extends ConfigurationContai
 
         // The activity may be waiting for stop, but that is no longer
         // appropriate for it.
+        // next 就是目标 Activity，将其从下面几个队列移除
         mStackSupervisor.mStoppingActivities.remove(next);
         mStackSupervisor.mGoingToSleepActivities.remove(next);
         next.sleeping = false;
@@ -2451,6 +2455,8 @@ class ActivityStack<T extends StackWindowController> extends ConfigurationContai
                 && !lastResumedCanPip;
 
         boolean pausing = mStackSupervisor.pauseBackStacks(userLeaving, next, false);
+
+        // mResumedActivity 指当前 Activity
         if (mResumedActivity != null) {
             if (DEBUG_STATES) Slog.d(TAG_STATES,
                     "resumeTopActivityLocked: Pausing " + mResumedActivity);
@@ -2886,6 +2892,7 @@ class ActivityStack<T extends StackWindowController> extends ConfigurationContai
         TaskRecord task = null;
         if (!newTask) {
             // If starting in an existing task, find where that is...
+            // 如果不需要新 task，则从 mTaskHistory 中找到相应的 task
             boolean startIt = true;
             for (int taskNdx = mTaskHistory.size() - 1; taskNdx >= 0; --taskNdx) {
                 task = mTaskHistory.get(taskNdx);
@@ -3495,6 +3502,7 @@ class ActivityStack<T extends StackWindowController> extends ConfigurationContai
                 }
                 EventLogTags.writeAmStopActivity(
                         r.userId, System.identityHashCode(r), r.shortComponentName);
+                // 执行 StopActivityItem
                 mService.getLifecycleManager().scheduleTransaction(r.app.thread, r.appToken,
                         StopActivityItem.obtain(r.visible, r.configChangeFlags));
                 if (shouldSleepOrShutDownActivities()) {

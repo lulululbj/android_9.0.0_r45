@@ -7643,6 +7643,7 @@ public class ActivityManagerService extends IActivityManager.Stub
         // next app record if we are emulating process with anonymous threads.
         ProcessRecord app;
         long startTime = SystemClock.uptimeMillis();
+        // 根据 pid 查找 ProcessRecord
         if (pid != MY_PID && pid >= 0) {
             synchronized (mPidsSelfLocked) {
                 app = mPidsSelfLocked.get(pid);
@@ -7662,11 +7663,13 @@ public class ActivityManagerService extends IActivityManager.Stub
             }
         }
 
+        // 通过 AMS 启动的进程，ProcessRecord 不会为 null。
+        // 为 null 的话，就杀掉它
         if (app == null) {
             Slog.w(TAG, "No pending application record for pid " + pid
                     + " (IApplicationThread " + thread + "); dropping process");
             EventLog.writeEvent(EventLogTags.AM_DROP_PROCESS, pid);
-            if (pid > 0 && pid != MY_PID) {
+            if (pid > 0 && pid != MY_PID) { // pid 大于 0 且不是系统进程
                 killProcessQuiet(pid);
                 //TODO: killProcessGroup(app.info.uid, pid);
             } else {
@@ -7704,6 +7707,7 @@ public class ActivityManagerService extends IActivityManager.Stub
 
         EventLog.writeEvent(EventLogTags.AM_PROC_BOUND, app.userId, app.pid, app.processName);
 
+        // 设置进程相关信息
         app.makeActive(thread, mProcessStats);
         app.curAdj = app.setAdj = app.verifiedAdj = ProcessList.INVALID_ADJ;
         app.curSchedGroup = app.setSchedGroup = ProcessList.SCHED_GROUP_DEFAULT;
@@ -7726,6 +7730,7 @@ public class ActivityManagerService extends IActivityManager.Stub
         boolean normalMode = mProcessesReady || isAllowedWhileBooting(app.info);
         List<ProviderInfo> providers = normalMode ? generateApplicationProvidersLocked(app) : null;
 
+        // 获取进程的 ContentProvider
         if (providers != null && checkAppInLaunchingProvidersLocked(app)) {
             Message msg = mHandler.obtainMessage(CONTENT_PROVIDER_PUBLISH_TIMEOUT_MSG);
             msg.obj = app;
@@ -7891,6 +7896,7 @@ public class ActivityManagerService extends IActivityManager.Stub
                         mCoreSettingsObserver.getCoreSettingsLocked(),
                         buildSerial, isAutofillCompatEnabled);
             } else {
+                // 调用 ActivityThread 的 bindApplication() 方法
                 thread.bindApplication(processName, appInfo, providers, null, profilerInfo,
                         null, null, null, testMode,
                         mBinderTransactionTrackingEnabled, enableTrackAllocation,
@@ -7932,6 +7938,7 @@ public class ActivityManagerService extends IActivityManager.Stub
         // See if the top visible activity is waiting to run in this process...
         if (normalMode) {
             try {
+                // 调用 realStartActivityLocked 启动 activity
                 if (mStackSupervisor.attachApplicationLocked(app)) {
                     didSomething = true;
                 }
@@ -7944,6 +7951,7 @@ public class ActivityManagerService extends IActivityManager.Stub
         // Find any services that should be running in this process...
         if (!badApp) {
             try {
+                // 启动处于等待状态的 ServiceRecord
                 didSomething |= mServices.attachApplicationLocked(app, processName);
                 checkTime(startTime, "attachApplicationLocked: after mServices.attachApplicationLocked");
             } catch (Exception e) {
@@ -7955,6 +7963,7 @@ public class ActivityManagerService extends IActivityManager.Stub
         // Check if a next-broadcast receiver is in this process...
         if (!badApp && isPendingBroadcastProcessLocked(pid)) {
             try {
+                // 启动处于等待状态的 BroadcastReceiver
                 didSomething |= sendPendingBroadcastsLocked(app);
                 checkTime(startTime, "attachApplicationLocked: after sendPendingBroadcastsLocked");
             } catch (Exception e) {
@@ -7970,7 +7979,7 @@ public class ActivityManagerService extends IActivityManager.Stub
                     "New app is backup target, launching agent for " + app);
             notifyPackageUse(mBackupTarget.appInfo.packageName,
                              PackageManager.NOTIFY_PACKAGE_USE_BACKUP);
-            try {
+            try { // 启动处于等待状态的 BackupAgent
                 thread.scheduleCreateBackupAgent(mBackupTarget.appInfo,
                         compatibilityInfoForPackageLocked(mBackupTarget.appInfo),
                         mBackupTarget.backupMode);
@@ -7986,7 +7995,7 @@ public class ActivityManagerService extends IActivityManager.Stub
             return false;
         }
 
-        if (!didSomething) {
+        if (!didSomething) { // 如果启动了某些组件，就要调整 oom_adj 值
             updateOomAdjLocked();
             checkTime(startTime, "attachApplicationLocked: after updateOomAdjLocked");
         }
