@@ -65,8 +65,10 @@ public class TransactionExecutor {
         final IBinder token = transaction.getActivityToken();
         log("Start resolving transaction for client: " + mTransactionHandler + ", token: " + token);
 
+        // 执行 callBack
         executeCallbacks(transaction);
 
+        // 执行生命周期状态
         executeLifecycleState(transaction);
         mPendingActions.clear();
         log("End resolving transaction");

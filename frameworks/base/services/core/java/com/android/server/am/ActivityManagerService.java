@@ -8016,6 +8016,7 @@ public class ActivityManagerService extends IActivityManager.Stub
 
     @Override
     public final void activityIdle(IBinder token, Configuration config, boolean stopProfiling) {
+        
         final long origId = Binder.clearCallingIdentity();
         synchronized (this) {
             ActivityStack stack = ActivityRecord.getStackLocked(token);

@@ -1547,6 +1547,7 @@ public class ActivityStackSupervisor extends ConfigurationContainer implements D
                 clientTransaction.setLifecycleStateRequest(lifecycleItem);
 
                 // Schedule transaction.
+                // 调用 ClientLifecycleManager.scheduleTransaction()
                 mService.getLifecycleManager().scheduleTransaction(clientTransaction);
 
 
