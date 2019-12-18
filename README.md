@@ -10,6 +10,7 @@
 3. [Android 世界中，谁喊醒了 Zygote ？](https://sunluyao.com/2019/10/15/zygote_fork/)
 4. [“无处不在” 的系统核心服务 —— ActivityManagerService 启动流程解析
 ](https://sunluyao.com/2019/10/27/ams_init/)
+5. [庖丁解牛 startActivity 启动流程](article/start_activity.md)
 
 
 ## 其他
