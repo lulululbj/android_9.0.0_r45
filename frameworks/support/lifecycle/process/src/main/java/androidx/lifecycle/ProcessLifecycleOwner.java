@@ -40,6 +40,13 @@ import androidx.lifecycle.ReportFragment.ActivityInitializationListener;
  * won't send any events if activities are destroyed and recreated due to a
  * configuration change.
  *
+ * 提供整个应用进程的生命周期。
+ * 你可以把 ProcessLifecycleOwner 看成所有 Activity 的组合。ON_CREATE 和 ON_DESTROY 只会被分发一次，
+ * 其他的生命周期事件按如下规则分发：
+ *   对于 ON_START 和 ON_RESUME，只有第一个 Activity 通过这些事件时会被分发。
+ *   对于 ON_PAUSE 和 ON_STOP，只有最后一个 Activity 通过这些事件时会被延迟分发。这个延迟足够长以保证
+ *   当 Activity 因配置变化而销毁重建时不会发送任何事件。
+ * 
  * <p>
  * It is useful for use cases where you would like to react on your app coming to the foreground or
  * going to the background and you don't need a milliseconds accuracy in receiving lifecycle
@@ -98,6 +105,7 @@ public class ProcessLifecycleOwner implements LifecycleOwner {
         return sInstance;
     }
 
+	// 利用 ContentProvider 自动初始化
     static void init(Context context) {
         sInstance.attach(context);
     }
@@ -125,6 +133,7 @@ public class ProcessLifecycleOwner implements LifecycleOwner {
     void activityPaused() {
         mResumedCounter--;
         if (mResumedCounter == 0) {
+			// 延迟 700 ms 发送
             mHandler.postDelayed(mDelayedPauseRunnable, TIMEOUT_MS);
         }
     }

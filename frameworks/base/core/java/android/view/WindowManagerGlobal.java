@@ -183,8 +183,11 @@ public final class WindowManagerGlobal {
         synchronized (WindowManagerGlobal.class) {
             if (sWindowSession == null) {
                 try {
+					// 获取 IMM 代理对象
                     InputMethodManager imm = InputMethodManager.getInstance();
+					// 获取 WMS 代理对象
                     IWindowManager windowManager = getWindowManagerService();
+					// Binder 调用 WMS 的 openSession() 方法
                     sWindowSession = windowManager.openSession(
                             new IWindowSessionCallback.Stub() {
                                 @Override
@@ -343,6 +346,8 @@ public final class WindowManagerGlobal {
                 }
             }
 
+			// 初始化 ViewRootImpl
+			// ViewRootImpl 和 Window 是一一对应的
             root = new ViewRootImpl(view.getContext(), display);
 
             view.setLayoutParams(wparams);

@@ -1665,7 +1665,7 @@ public class Instrumentation {
         try {
             intent.migrateExtraStreamToClipData();
             intent.prepareToLeaveProcess(who);
-            // 调用 AMS 来启动 Activity
+            // Binder 调用 AMS 来启动 Activity
             int result = ActivityManager.getService()
                 .startActivity(whoThread, who.getBasePackageName(), intent,
                         intent.resolveTypeIfNeeded(who.getContentResolver()),

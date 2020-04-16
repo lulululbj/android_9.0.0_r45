@@ -3913,6 +3913,7 @@ public final class ActivityThread extends ClientTransactionHandler {
             if (a.mVisibleFromClient) {
                 if (!a.mWindowAdded) {
                     a.mWindowAdded = true;
+					// 添加 decorView 到 WindowManager
                     wm.addView(decor, l);
                 } else {
                     // The activity will get a callback for this {@link LayoutParams} change
