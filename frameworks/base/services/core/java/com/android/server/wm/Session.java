@@ -202,6 +202,7 @@ class Session extends IWindowSession.Stub implements IBinder.DeathRecipient {
             int viewVisibility, int displayId, Rect outFrame, Rect outContentInsets,
             Rect outStableInsets, Rect outOutsets,
             DisplayCutout.ParcelableWrapper outDisplayCutout, InputChannel outInputChannel) {
+            // 调用 WMS.addWindow()
         return mService.addWindow(this, window, seq, attrs, viewVisibility, displayId, outFrame,
                 outContentInsets, outStableInsets, outOutsets, outDisplayCutout, outInputChannel);
     }

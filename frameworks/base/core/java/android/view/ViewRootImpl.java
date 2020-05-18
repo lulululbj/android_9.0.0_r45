@@ -503,6 +503,7 @@ public final class ViewRootImpl implements ViewParent,
 
     public ViewRootImpl(Context context, Display display) {
         mContext = context;
+		// IWindowSession 代理对象，与 WMS 进行 Binder 通信
         mWindowSession = WindowManagerGlobal.getWindowSession();
         mDisplay = display;
         mBasePackageName = context.getBasePackageName();
@@ -515,6 +516,7 @@ public final class ViewRootImpl implements ViewParent,
         mTempRect = new Rect();
         mVisRect = new Rect();
         mWinFrame = new Rect();
+		// IWindow Binder 对象
         mWindow = new W(this);
         mTargetSdkVersion = context.getApplicationInfo().targetSdkVersion;
         mViewVisibility = View.GONE;
@@ -534,6 +536,7 @@ public final class ViewRootImpl implements ViewParent,
         mDensity = context.getResources().getDisplayMetrics().densityDpi;
         mNoncompatDensity = context.getResources().getDisplayMetrics().noncompatDensityDpi;
         mFallbackEventHandler = new PhoneFallbackEventHandler(context);
+		// 初始化 Choreographer
         mChoreographer = Choreographer.getInstance();
         mDisplayManager = (DisplayManager)context.getSystemService(Context.DISPLAY_SERVICE);
 
@@ -755,6 +758,7 @@ public final class ViewRootImpl implements ViewParent,
                     mOrigWindowType = mWindowAttributes.type;
                     mAttachInfo.mRecomputeGlobalAttributes = true;
                     collectViewAttributes();
+					// Binder 调用 Session.addToDisplay()
                     res = mWindowSession.addToDisplay(mWindow, mSeq, mWindowAttributes,
                             getHostVisibility(), mDisplay.getDisplayId(), mWinFrame,
                             mAttachInfo.mContentInsets, mAttachInfo.mStableInsets,
@@ -1222,6 +1226,7 @@ public final class ViewRootImpl implements ViewParent,
     @Override
     public void requestLayout() {
         if (!mHandlingLayoutInLayoutRequest) {
+			// 检查是否是主线程，否则将抛出异常
             checkThread();
             mLayoutRequested = true;
             scheduleTraversals();
@@ -2268,6 +2273,7 @@ public final class ViewRootImpl implements ViewParent,
                             + " coveredInsetsChanged=" + contentInsetsChanged);
 
                      // Ask host how big it wants to be
+                     // 测量
                     performMeasure(childWidthMeasureSpec, childHeightMeasureSpec);
 
                     // Implementation of weights from WindowManager.LayoutParams
@@ -2313,6 +2319,7 @@ public final class ViewRootImpl implements ViewParent,
         boolean triggerGlobalLayoutListener = didLayout
                 || mAttachInfo.mRecomputeGlobalAttributes;
         if (didLayout) {
+			// 布局
             performLayout(lp, mWidth, mHeight);
 
             // By this point all views have been sized and positioned
@@ -2477,7 +2484,7 @@ public final class ViewRootImpl implements ViewParent,
                 }
                 mPendingTransitions.clear();
             }
-
+			// 绘制
             performDraw();
         } else {
             if (isViewVisible) {

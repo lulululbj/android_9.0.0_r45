@@ -936,6 +936,7 @@ public class Activity extends ContextThemeWrapper
      *         visual.
      */
     public Window getWindow() {
+    	// mWindow 是在 attach() 方法中赋值的
         return mWindow;
     }
 
@@ -1045,6 +1046,7 @@ public class Activity extends ContextThemeWrapper
                     ? mLastNonConfigurationInstances.fragments : null);
         }
         mFragments.dispatchCreate();
+		// 调用 Application.dispatchActivityCreated() 方法
         getApplication().dispatchActivityCreated(this, savedInstanceState);
         if (mVoiceInteractor != null) {
             mVoiceInteractor.attachActivity(this);
@@ -5528,6 +5530,7 @@ public class Activity extends ContextThemeWrapper
 
     void makeVisible() {
         if (!mWindowAdded) {
+			// wm 是 WindowManagerImpl 对象
             ViewManager wm = getWindowManager();
             wm.addView(mDecor, getWindow().getAttributes());
             mWindowAdded = true;
@@ -7057,10 +7060,12 @@ public class Activity extends ContextThemeWrapper
             NonConfigurationInstances lastNonConfigurationInstances,
             Configuration config, String referrer, IVoiceInteractor voiceInteractor,
             Window window, ActivityConfigCallback activityConfigCallback) {
+        // 回调 attachBaseContext()
         attachBaseContext(context);
 
         mFragments.attachHost(null /*parent*/);
 
+		// 创建 PhoneWindow
         mWindow = new PhoneWindow(this, window, activityConfigCallback);
         mWindow.setWindowControllerCallback(this);
         mWindow.setCallback(this);

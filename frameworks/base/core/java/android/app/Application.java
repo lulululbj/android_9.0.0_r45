@@ -213,6 +213,7 @@ public class Application extends ContextWrapper implements ComponentCallbacks2 {
         mLoadedApk = ContextImpl.getImpl(context).mPackageInfo;
     }
 
+	// 分发 Activity onCreate() 事件
     /* package */ void dispatchActivityCreated(Activity activity, Bundle savedInstanceState) {
         Object[] callbacks = collectActivityLifecycleCallbacks();
         if (callbacks != null) {
@@ -288,6 +289,7 @@ public class Application extends ContextWrapper implements ComponentCallbacks2 {
         return callbacks;
     }
 
+	// 返回所有 ActivityLifecycleCallback
     private Object[] collectActivityLifecycleCallbacks() {
         Object[] callbacks = null;
         synchronized (mActivityLifecycleCallbacks) {
