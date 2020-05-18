@@ -13720,10 +13720,11 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
         final float y = event.getY();
         final int viewFlags = mViewFlags;
         final int action = event.getAction();
-
-        final boolean clickable = ((viewFlags & CLICKABLE) == CLICKABLE
-                || (viewFlags & LONG_CLICKABLE) == LONG_CLICKABLE)
-                || (viewFlags & CONTEXT_CLICKABLE) == CONTEXT_CLICKABLE;
+        
+        // 判断是否可以点击
+        final boolean clickable = ((viewFlags & CLICKABLE) == CLICKABLE // 点击
+                || (viewFlags & LONG_CLICKABLE) == LONG_CLICKABLE)           // 长按
+                || (viewFlags & CONTEXT_CLICKABLE) == CONTEXT_CLICKABLE; // 上下文菜单
 
         if ((viewFlags & ENABLED_MASK) == DISABLED) {
             if (action == MotionEvent.ACTION_UP && (mPrivateFlags & PFLAG_PRESSED) != 0) {
@@ -13732,19 +13733,24 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
             mPrivateFlags3 &= ~PFLAG3_FINGER_DOWN;
             // A disabled view that is clickable still consumes the touch
             // events, it just doesn't respond to them.
+            // 让被禁用的 View 也把事件消费掉
             return clickable;
         }
+
+        // 触摸代理，增大点击区域。现在几乎不使用
         if (mTouchDelegate != null) {
             if (mTouchDelegate.onTouchEvent(event)) {
                 return true;
             }
         }
 
+        // TOOLTIP 是 Android 8.0 新增的长按提示
         if (clickable || (viewFlags & TOOLTIP) == TOOLTIP) {
             switch (action) {
                 case MotionEvent.ACTION_UP:
                     mPrivateFlags3 &= ~PFLAG3_FINGER_DOWN;
                     if ((viewFlags & TOOLTIP) == TOOLTIP) {
+                        // 松手之后，消除 TOOLTIP(延时 1500 ms)
                         handleTooltipUp();
                     }
                     if (!clickable) {
@@ -13756,7 +13762,7 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
                         break;
                     }
                     boolean prepressed = (mPrivateFlags & PFLAG_PREPRESSED) != 0;
-                    if ((mPrivateFlags & PFLAG_PRESSED) != 0 || prepressed) {
+                    if ((mPrivateFlags & PFLAG_PRESSED) != 0 || prepressed) { // 按下或者预按下状态
                         // take focus if we don't have it already and we should in
                         // touch mode.
                         boolean focusTaken = false;
@@ -13764,7 +13770,7 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
                             focusTaken = requestFocus();
                         }
 
-                        if (prepressed) {
+                        if (prepressed) { // 如果是预按下状态，设置为按下状态
                             // The button is being released before we actually
                             // showed it as pressed.  Make it show the pressed
                             // state now (before scheduling the click) to ensure
@@ -13785,7 +13791,7 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
                                     mPerformClick = new PerformClick();
                                 }
                                 if (!post(mPerformClick)) {
-                                    performClickInternal();
+                                    performClickInternal(); // 触发点击监听
                                 }
                             }
                         }
@@ -13808,12 +13814,14 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
                     break;
 
                 case MotionEvent.ACTION_DOWN:
+                    // 是不是摸到屏幕了(非实体按键触发)
                     if (event.getSource() == InputDevice.SOURCE_TOUCHSCREEN) {
                         mPrivateFlags3 |= PFLAG3_FINGER_DOWN;
                     }
                     mHasPerformedLongPress = false;
 
                     if (!clickable) {
+                        // 检查 TOOL_TIP
                         checkForLongClick(0, x, y);
                         break;
                     }
@@ -13828,6 +13836,7 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
                     // For views inside a scrolling container, delay the pressed feedback for
                     // a short period in case this is a scroll.
                     if (isInScrollingContainer) {
+                        // 切换至预按下状态,并注册按下计时器
                         mPrivateFlags |= PFLAG_PREPRESSED;
                         if (mPendingCheckForTap == null) {
                             mPendingCheckForTap = new CheckForTap();
@@ -13837,6 +13846,7 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
                         postDelayed(mPendingCheckForTap, ViewConfiguration.getTapTimeout());
                     } else {
                         // Not inside a scrolling container, so show the feedback right away
+                        // 设置按下状态为 true，并设置长按计时器
                         setPressed(true, x, y);
                         checkForLongClick(0, x, y);
                     }
@@ -13856,13 +13866,16 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
 
                 case MotionEvent.ACTION_MOVE:
                     if (clickable) {
+                        // 控制水波纹变化
                         drawableHotspotChanged(x, y);
                     }
 
                     // Be lenient about moving outside of buttons
+                    // 允许 outside 一点距离
                     if (!pointInView(x, y, mTouchSlop)) {
                         // Outside button
                         // Remove any future long press/tap checks
+                        // 超出 View范围，进行清除
                         removeTapCallback();
                         removeLongPressCallback();
                         if ((mPrivateFlags & PFLAG_PRESSED) != 0) {
