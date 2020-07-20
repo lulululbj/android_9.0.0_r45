@@ -1,0 +1,21 @@
+build = [
+    "JavaLibrary.bp",
+    "NativeCode.bp",
+]
+
+python_binary_host {
+    name: "gen-annotated-java-files-bp",
+    main: "annotations/generate_annotated_java_files.py",
+    srcs: [
+        "annotations/generate_annotated_java_files.py",
+    ],
+    version: {
+        py2: {
+            enabled: true,
+            embedded_launcher: true,
+        },
+        py3: {
+            enabled: false,
+        },
+    },
+}

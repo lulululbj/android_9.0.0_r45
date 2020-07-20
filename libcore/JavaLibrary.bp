@@ -1,0 +1,321 @@
+// Copyright (C) 2007 The Android Open Source Project
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+//
+// Definitions for building the Java library and associated tests.
+//
+
+// libcore is divided into modules.
+//
+// The structure of each module is:
+//
+//   src/
+//       main/               # To be shipped on every device.
+//            java/          # Java source for library code.
+//            native/        # C++ source for library code.
+//            resources/     # Support files.
+//       test/               # Built only on demand, for testing.
+//            java/          # Java source for tests.
+//            native/        # C++ source for tests (rare).
+//            resources/     # Support files.
+//
+// All subdirectories are optional
+
+build = [
+    "openjdk_java_files.bp",
+    "non_openjdk_java_files.bp",
+    "annotated_java_files.bp",
+]
+
+// The Java files and their associated resources.
+core_resource_dirs = [
+    "luni/src/main/java",
+    "ojluni/src/main/resources/",
+]
+
+java_defaults {
+    name: "libcore_java_defaults",
+    javacflags: [
+        //"-Xlint:all",
+        //"-Xlint:-serial,-deprecation,-unchecked",
+    ],
+    dxflags: ["--core-library"],
+    no_standard_libs: true,
+    errorprone: {
+        javacflags: [
+            "-Xep:MissingOverride:OFF",  // Ignore missing @Override.
+        ],
+    },
+}
+
+//
+// Build for the target (device).
+//
+
+java_library {
+    name: "core-all",
+    defaults: ["libcore_java_defaults"],
+
+    srcs: [
+        ":openjdk_java_files",
+        ":non_openjdk_java_files",
+        ":android_icu4j_src_files",
+        ":openjdk_lambda_stub_files",
+    ],
+    openjdk9: {
+        srcs: ["luni/src/module/java/module-info.java"],
+        javacflags: ["--patch-module=java.base=."],
+    },
+    java_resource_dirs: core_resource_dirs,
+    java_resources: [":android_icu4j_resources"],
+
+    required: [
+        "tzdata",
+        "tzlookup.xml",
+    ],
+
+    system_modules: "none",
+
+    installable: false,
+}
+
+java_system_modules {
+    name: "core-all-system-modules",
+    libs: ["core-all"],
+}
+
+java_library {
+    name: "core-oj",
+    defaults: ["libcore_java_defaults"],
+    hostdex: true,
+
+    srcs: [":openjdk_java_files"],
+    java_resource_dirs: core_resource_dirs,
+    libs: ["core-all"],
+    system_modules: "core-all-system-modules",
+    openjdk9: {
+        javacflags: ["--patch-module=java.base=."],
+    },
+    jacoco: {
+        exclude_filter: [
+            "java.lang.Class",
+            "java.lang.Long",
+            "java.lang.Number",
+            "java.lang.Object",
+            "java.lang.String",
+            "java.lang.invoke.MethodHandle",
+            "java.lang.ref.Reference",
+            "java.lang.reflect.Proxy",
+            "java.util.AbstractMap",
+            "java.util.HashMap",
+            "java.util.HashMap$Node",
+            "java.util.Map",
+        ],
+    },
+
+    notice: "ojluni/NOTICE",
+
+    required: [
+        "tzdata",
+        "tzlookup.xml",
+    ],
+
+}
+
+// Definitions to make the core library.
+java_library {
+    name: "core-libart",
+    defaults: ["libcore_java_defaults"],
+    hostdex: true,
+
+    srcs: [
+        ":non_openjdk_java_files",
+        ":android_icu4j_src_files",
+    ],
+    java_resources: [":android_icu4j_resources"],
+
+    libs: ["core-all"],
+    system_modules: "core-all-system-modules",
+    openjdk9: {
+        javacflags: ["--patch-module=java.base=."],
+    },
+    jacoco: {
+        exclude_filter: [
+            "java.lang.DexCache",
+            "dalvik.system.ClassExt",
+        ],
+    },
+
+    required: [
+        "tzdata",
+        "tzlookup.xml",
+    ],
+}
+
+// A guaranteed unstripped version of core-oj and core-libart.
+// The build system may or may not strip the core-oj and core-libart jars,
+// but these will not be stripped. See b/24535627.
+java_library {
+    name: "core-oj-testdex",
+    static_libs: ["core-oj"],
+    no_standard_libs: true,
+    libs: ["core-all"],
+    system_modules: "core-all-system-modules",
+    dxflags: ["--core-library"],
+    dex_preopt: {
+        enabled: false,
+    },
+    notice: "ojluni/NOTICE",
+    required: [
+        "tzdata",
+        "tzlookup.xml",
+    ],
+}
+
+java_library {
+    name: "core-libart-testdex",
+    static_libs: ["core-libart"],
+    no_standard_libs: true,
+    libs: ["core-all"],
+    system_modules: "core-all-system-modules",
+    dxflags: ["--core-library"],
+    dex_preopt: {
+        enabled: false,
+    },
+    notice: "ojluni/NOTICE",
+    required: [
+        "tzdata",
+        "tzlookup.xml",
+    ],
+}
+
+// A library that exists to satisfy javac when
+// compiling source code that contains lambdas.
+java_library {
+    name: "core-lambda-stubs",
+    defaults: ["libcore_java_defaults"],
+
+    srcs: [
+        ":openjdk_lambda_stub_files",
+        ":openjdk_lambda_duplicate_stub_files",
+    ],
+
+    libs: ["core-all"],
+    system_modules: "core-all-system-modules",
+    openjdk9: {
+        javacflags: ["--patch-module=java.base=."],
+    },
+
+    notice: "ojluni/NOTICE",
+
+    installable: false,
+    include_srcs: true,
+}
+
+java_system_modules {
+    name: "core-system-modules",
+    libs: [
+        "core-oj",
+        "core-libart",
+        "core-lambda-stubs",
+    ],
+}
+
+// Build libcore test rules
+java_library_static {
+    name: "core-test-rules",
+    hostdex: true,
+    no_framework_libs: true,
+    srcs: [
+        "dalvik/test-rules/src/main/**/*.java",
+        "test-rules/src/main/**/*.java",
+    ],
+    static_libs: ["junit"],
+}
+
+// Make the core-tests-support library.
+java_library_static {
+    name: "core-tests-support",
+    hostdex: true,
+    no_framework_libs: true,
+    srcs: ["support/src/test/java/**/*.java"],
+    libs: [
+        "junit",
+        "bouncycastle",
+    ],
+    static_libs: [
+        "bouncycastle-bcpkix",
+        "bouncycastle-ocsp",
+    ],
+}
+
+// Make the jsr166-tests library.
+java_library_static {
+    name: "jsr166-tests",
+    srcs: ["jsr166-tests/src/test/java/**/*.java"],
+    no_framework_libs: true,
+    libs: [
+        "junit",
+    ],
+}
+
+genrule {
+    name: "gen-ojluni-jaif-annotated-srcs",
+    tools: [
+        "gen-annotated-java-files-bp",
+        "soong_zip",
+    ],
+    tool_files: [
+        ":insert-annotations-to-source",
+        "annotations/ojluni.jaif",
+    ],
+    srcs: [
+        ":annotated_ojluni_files",
+    ],
+    cmd: "($(location gen-annotated-java-files-bp) $(location annotations/ojluni.jaif) > $(genDir)/annotated_java_files.bp.tmp) && " +
+         "(diff -u `pwd`/libcore/annotated_java_files.bp $(genDir)/annotated_java_files.bp.tmp || " +
+         "(echo -e \"********************\" >&2; " +
+         " echo -e \"annotated_java_files.bp needs regenerating. Please run:\" >&2; " +
+         " echo -e \"libcore/annotations/generate_annotated_java_files.py libcore/annotations/ojluni.jaif > libcore/annotated_java_files.bp\" >&2; " +
+         " echo -e \"********************\" >&2; exit 1) ) && " +
+         "(rm $(genDir)/annotated_java_files.bp.tmp) && " +
+         "(external/annotation-tools/annotation-file-utilities/scripts/insert-annotations-to-source -d $(genDir) $(location annotations/ojluni.jaif) $(in)) && " +
+         "($(location soong_zip) -o $(out) -C $(genDir) -D $(genDir))",
+    out: [
+        "ojluni_jaif_annotated_srcs.srcjar",
+    ],
+}
+
+droiddoc {
+    name: "core-docs",
+    srcs: [
+        ":openjdk_javadoc_files",
+        ":non_openjdk_javadoc_files",
+        ":android_icu4j_src_files_for_docs",
+        ":gen-ojluni-jaif-annotated-srcs",
+    ],
+    exclude_srcs: [
+        ":annotated_ojluni_files",
+    ],
+    custom_template: "droiddoc-templates-sdk",
+    hdf: [
+        "android.whichdoc offline",
+    ],
+    knowntags: [
+        "known_oj_tags.txt",
+    ],
+    proofread_file: "core-docs-proofread.txt",
+    todo_file: "core-docs-todo.html",
+    args: "-offlinemode -title \"libcore\"",
+}
