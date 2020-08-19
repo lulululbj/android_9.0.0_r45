@@ -1036,7 +1036,7 @@ public final class LoadedApk {
 
     public Application makeApplication(boolean forceDefaultAppClass,
             Instrumentation instrumentation) {
-        if (mApplication != null) {
+        if (mApplication != null) { // 一个 LoadedApk 对应一个 Application
             return mApplication;
         }
 
@@ -1057,7 +1057,9 @@ public final class LoadedApk {
                 initializeJavaContextClassLoader();
                 Trace.traceEnd(Trace.TRACE_TAG_ACTIVITY_MANAGER);
             }
+			// 创建 ContextImpl
             ContextImpl appContext = ContextImpl.createAppContext(mActivityThread, this);
+			// 反射创建 Application
             app = mActivityThread.mInstrumentation.newApplication(
                     cl, appClass, appContext);
             appContext.setOuterContext(app);

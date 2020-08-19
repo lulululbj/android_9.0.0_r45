@@ -2867,12 +2867,12 @@ public final class ActivityThread extends ClientTransactionHandler {
                     r.activityInfo.targetActivity);
         }
 
-        // 获取 Context
+        // 创建 ContextImpl 对象
         ContextImpl appContext = createBaseContextForActivity(r);
         Activity activity = null;
         try {
             java.lang.ClassLoader cl = appContext.getClassLoader();
-            // 反射创建 Activity
+            // 反射创建 Activity 对象
             activity = mInstrumentation.newActivity(
                     cl, component.getClassName(), r.intent);
             StrictMode.incrementExpectedActivityCount(activity.getClass());
@@ -2890,7 +2890,7 @@ public final class ActivityThread extends ClientTransactionHandler {
         }
 
         try {
-            // 获取 Application
+            // 创建 Application 对象
             Application app = r.packageInfo.makeApplication(false, mInstrumentation);
 
             if (localLOGV) Slog.v(TAG, "Performing launch of " + r);
@@ -2916,6 +2916,7 @@ public final class ActivityThread extends ClientTransactionHandler {
                     r.mPendingRemoveWindowManager = null;
                 }
                 appContext.setOuterContext(activity);
+				// attach
                 activity.attach(appContext, this, getInstrumentation(), r.token,
                         r.ident, app, r.intent, r.activityInfo, title, r.parent,
                         r.embeddedID, r.lastNonConfigurationInstances, config,
@@ -3384,6 +3385,7 @@ public final class ActivityThread extends ClientTransactionHandler {
 
         String component = data.intent.getComponent().getClassName();
 
+		// 创建 LoadedApk 对象
         LoadedApk packageInfo = getPackageInfoNoCheck(
                 data.info.applicationInfo, data.compatInfo);
 
@@ -3393,7 +3395,9 @@ public final class ActivityThread extends ClientTransactionHandler {
         BroadcastReceiver receiver;
         ContextImpl context;
         try {
+			// 创建 Application 对象
             app = packageInfo.makeApplication(false, mInstrumentation);
+			// 创建 ContextImpl 对象
             context = (ContextImpl) app.getBaseContext();
             if (data.info.splitName != null) {
                 context = (ContextImpl) context.createContextForSplit(data.info.splitName);
@@ -3402,6 +3406,7 @@ public final class ActivityThread extends ClientTransactionHandler {
             data.intent.setExtrasClassLoader(cl);
             data.intent.prepareToEnterProcess();
             data.setExtrasClassLoader(cl);
+			// 创建 BroadcastReceiver 对象
             receiver = packageInfo.getAppFactory()
                     .instantiateReceiver(cl, data.info.name, data.intent);
         } catch (Exception e) {
@@ -3424,6 +3429,7 @@ public final class ActivityThread extends ClientTransactionHandler {
 
             sCurrentBroadcastIntent.set(data.intent);
             receiver.setPendingResult(data);
+			// 回调 onReceive()
             receiver.onReceive(context.getReceiverRestrictedContext(),
                     data.intent);
         } catch (Exception e) {
@@ -3553,10 +3559,12 @@ public final class ActivityThread extends ClientTransactionHandler {
         // we are back active so skip it.
         unscheduleGcIdler();
 
+		// 创建 LoadedApk
         LoadedApk packageInfo = getPackageInfoNoCheck(
                 data.info.applicationInfo, data.compatInfo);
         Service service = null;
         try {
+			// 创建 Service
             java.lang.ClassLoader cl = packageInfo.getClassLoader();
             service = packageInfo.getAppFactory()
                     .instantiateService(cl, data.info.name, data.intent);
@@ -3571,13 +3579,17 @@ public final class ActivityThread extends ClientTransactionHandler {
         try {
             if (localLOGV) Slog.v(TAG, "Creating service " + data.info.name);
 
-            ContextImpl context = ContextImpl.createAppContext(this, packageInfo);
+			// 创建 ContextImpl
+            ContextImpl context = ContextImpl.createAppCntext(this, packageInfo);
             context.setOuterContext(service);
 
+			// 创建 Application
             Application app = packageInfo.makeApplication(false, mInstrumentation);
+			// attach
             service.attach(context, this, data.info.name, data.token, app,
                     ActivityManager.getService());
-            service.onCreate();
+			// 回调 onCreate()
+			service.onCreate();
             mServices.put(data.token, service);
             try {
                 ActivityManager.getService().serviceDoneExecuting(
@@ -6427,6 +6439,7 @@ public final class ActivityThread extends ClientTransactionHandler {
                 c = mInitialApplication;
             } else {
                 try {
+					// 创建 LoadedApk 和 ContextImpl
                     c = context.createPackageContext(ai.packageName,
                             Context.CONTEXT_INCLUDE_CODE);
                 } catch (PackageManager.NameNotFoundException e) {
@@ -6456,6 +6469,7 @@ public final class ActivityThread extends ClientTransactionHandler {
                     // System startup case.
                     packageInfo = getSystemContext().mPackageInfo;
                 }
+				// 创建 ContentProvider
                 localProvider = packageInfo.getAppFactory()
                         .instantiateProvider(cl, info.name);
                 provider = localProvider.getIContentProvider();
