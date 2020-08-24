@@ -842,6 +842,7 @@ class DisplayContent extends WindowContainer<DisplayContent.DisplayChildWindowCo
                     + getName() + " binder=" + binder);
         }
 
+		// mTokenMap 是一个 HashMap<IBinder, WindowToken>，
         mTokenMap.put(binder, token);
 
         if (token.asAppWindowToken() == null) {

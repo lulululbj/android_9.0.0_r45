@@ -847,6 +847,7 @@ final class ActivityRecord extends ConfigurationContainer implements AppWindowCo
             ActivityStackSupervisor supervisor, ActivityOptions options,
             ActivityRecord sourceRecord) {
         service = _service;
+		// 初始化 appToken
         appToken = new Token(this, _intent);
         info = aInfo;
         launchedFromPid = _launchedFromPid;
@@ -1005,7 +1006,8 @@ final class ActivityRecord extends ConfigurationContainer implements AppWindowCo
         // Make sure override configuration is up-to-date before using to create window controller.
         updateOverrideConfiguration();
 
-        mWindowContainerController = new AppWindowContainerController(taskController, appToken,
+		// 构造函数中会调用 createAppWindow() 创建 AppWindowToken 对象
+        mWindowContainerController = new AppWindowContaisnerController(taskController, appToken,
                 this, Integer.MAX_VALUE /* add on top */, info.screenOrientation, fullscreen,
                 (info.flags & FLAG_SHOW_FOR_ALL_USERS) != 0, info.configChanges,
                 task.voiceSession != null, mLaunchTaskBehind, isAlwaysFocusable(),

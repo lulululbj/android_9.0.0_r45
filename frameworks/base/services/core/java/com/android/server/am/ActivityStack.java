@@ -2938,6 +2938,7 @@ class ActivityStack<T extends StackWindowController> extends ConfigurationContai
         // time we get to this point. I think it is, but need to double check.
         // Use test in b/34179495 to trace the call path.
         if (r.getWindowContainerController() == null) {
+			// 创建 AppWindowContainerController 对象，其中包含 token 对象
             r.createWindowContainer();
         }
         task.setFrontOfTask();
