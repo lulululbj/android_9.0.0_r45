@@ -128,7 +128,7 @@ import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.app.IVoiceInteractor;
 import com.android.internal.app.ToolbarActionBar;
 import com.android.internal.app.WindowDecorActionBar;
-import com.android.internal.policy.PhoneWindow;
+import com.android.internal.policy.PhoneWWindow;
 
 import dalvik.system.VMRuntime;
 
@@ -5595,6 +5595,7 @@ public class Activity extends ContextThemeWrapper
      * activity.
      */
     private void finish(int finishTask) {
+    	// mParent 一般为 null，在 ActivityGroup 中会使用到
         if (mParent == null) {
             int resultCode;
             Intent resultData;

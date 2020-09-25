@@ -1007,7 +1007,7 @@ final class ActivityRecord extends ConfigurationContainer implements AppWindowCo
         updateOverrideConfiguration();
 
 		// 构造函数中会调用 createAppWindow() 创建 AppWindowToken 对象
-        mWindowContainerController = new AppWindowContaisnerController(taskController, appToken,
+        mWindowContainerController = new AppWindowContainerController(taskController, appToken,
                 this, Integer.MAX_VALUE /* add on top */, info.screenOrientation, fullscreen,
                 (info.flags & FLAG_SHOW_FOR_ALL_USERS) != 0, info.configChanges,
                 task.voiceSession != null, mLaunchTaskBehind, isAlwaysFocusable(),

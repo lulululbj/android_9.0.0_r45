@@ -161,6 +161,7 @@ public abstract class DisplayEventReceiver {
             Log.w(TAG, "Attempted to schedule a vertical sync pulse but the display event "
                     + "receiver has already been disposed.");
         } else {
+			// 注册监听 vsync 信号，会回调 onVsync() 方法
             nativeScheduleVsync(mReceiverPtr);
         }
     }

@@ -3702,6 +3702,7 @@ class ActivityStack<T extends StackWindowController> extends ConfigurationContai
      */
     final boolean finishActivityLocked(ActivityRecord r, int resultCode, Intent resultData,
             String reason, boolean oomAdj) {
+            // PAUSE_IMMEDIATELY 为 true，在 ActivityStackSupervisor 中定义
         return finishActivityLocked(r, resultCode, resultData, reason, oomAdj, !PAUSE_IMMEDIATELY);
     }
 
@@ -3760,6 +3761,7 @@ class ActivityStack<T extends StackWindowController> extends ConfigurationContai
                     if (DEBUG_PAUSE) Slog.v(TAG_PAUSE, "Finish needs to pause: " + r);
                     if (DEBUG_USER_LEAVING) Slog.v(TAG_USER_LEAVING,
                             "finish() => pause with userLeaving=false");
+					// 开始 pause mResumedActivity
                     startPausingLocked(false, false, null, pauseImmediately);
                 }
 

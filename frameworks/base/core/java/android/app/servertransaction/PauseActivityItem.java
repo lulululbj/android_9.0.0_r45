@@ -42,7 +42,7 @@ public class PauseActivityItem extends ActivityLifecycleItem {
     public void execute(ClientTransactionHandler client, IBinder token,
             PendingTransactionActions pendingActions) {
         Trace.traceBegin(TRACE_TAG_ACTIVITY_MANAGER, "activityPause");
-        // 调用 ActiivtyThread.handlePauseActivity()
+        // 调用 ActivityThread.handlePauseActivity()
         client.handlePauseActivity(token, mFinished, mUserLeaving, mConfigChanges, pendingActions,
                 "PAUSE_ACTIVITY_ITEM");
         Trace.traceEnd(TRACE_TAG_ACTIVITY_MANAGER);

@@ -5697,6 +5697,8 @@ public class ActivityManagerService extends IActivityManager.Stub
 
     /**
      * This is the internal entry point for handling Activity.finish().
+     * 
+     * 处理 Activity.finish() 的内部入口
      *
      * @param token The Binder token referencing the Activity we want to finish.
      * @param resultCode Result code, if any, from this Activity.
@@ -5714,6 +5716,7 @@ public class ActivityManagerService extends IActivityManager.Stub
         }
 
         synchronized(this) {
+        	// token 会持有 ActivityRecord 的弱引用
             ActivityRecord r = ActivityRecord.isInStackLocked(token);
             if (r == null) {
                 return true;

@@ -536,7 +536,7 @@ public final class ViewRootImpl implements ViewParent,
         mDensity = context.getResources().getDisplayMetrics().densityDpi;
         mNoncompatDensity = context.getResources().getDisplayMetrics().noncompatDensityDpi;
         mFallbackEventHandler = new PhoneFallbackEventHandler(context);
-		// 初始化 Choreographer
+		// 初始化 Choreographer，通过 Threadlocal 存储
         mChoreographer = Choreographer.getInstance();
         mDisplayManager = (DisplayManager)context.getSystemService(Context.DISPLAY_SERVICE);
 
@@ -1434,9 +1434,12 @@ public final class ViewRootImpl implements ViewParent,
     }
 
     void scheduleTraversals() {
+    	// 防止重复调用
         if (!mTraversalScheduled) {
             mTraversalScheduled = true;
+			// 发送同步屏障，保证优先处理异步消息
             mTraversalBarrier = mHandler.getLooper().getQueue().postSyncBarrier();
+			// 最终会执行 mTraversalRunnable 这个任务
             mChoreographer.postCallback(
                     Choreographer.CALLBACK_TRAVERSAL, mTraversalRunnable, null);
             if (!mUnbufferedInputDispatch) {
@@ -1459,12 +1462,14 @@ public final class ViewRootImpl implements ViewParent,
     void doTraversal() {
         if (mTraversalScheduled) {
             mTraversalScheduled = false;
+			// 移除同步屏障
             mHandler.getLooper().getQueue().removeSyncBarrier(mTraversalBarrier);
 
             if (mProfile) {
                 Debug.startMethodTracing("ViewAncestor");
             }
 
+			// 开始布局，测量，绘制
             performTraversals();
 
             if (mProfile) {

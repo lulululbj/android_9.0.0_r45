@@ -230,11 +230,14 @@ public final class Choreographer {
     private Choreographer(Looper looper, int vsyncSource) {
         mLooper = looper;
         mHandler = new FrameHandler(looper);
+		// 4.1 之后默认为 true，
+		// FrameDisplayEventReceiver 是个 vsync 事件接收器 
         mDisplayEventReceiver = USE_VSYNC
                 ? new FrameDisplayEventReceiver(looper, vsyncSource)
                 : null;
         mLastFrameTimeNanos = Long.MIN_VALUE;
 
+		// 一帧的时间
         mFrameIntervalNanos = (long)(1000000000 / getRefreshRate());
 
         mCallbackQueues = new CallbackQueue[CALLBACK_LAST + 1];
@@ -432,9 +435,9 @@ public final class Choreographer {
             final long dueTime = now + delayMillis;
             mCallbackQueues[callbackType].addCallbackLocked(dueTime, action, token);
 
-            if (dueTime <= now) {
+            if (dueTime <= now) { // 立即执行
                 scheduleFrameLocked(now);
-            } else {
+            } else { // 延迟执行
                 Message msg = mHandler.obtainMessage(MSG_DO_SCHEDULE_CALLBACK, action);
                 msg.arg1 = callbackType;
                 msg.setAsynchronous(true);
@@ -601,6 +604,7 @@ public final class Choreographer {
                 // If running on the Looper thread, then schedule the vsync immediately,
                 // otherwise post a message to schedule the vsync from the UI thread
                 // as soon as possible.
+                // 如果是当前线程，直接申请 vsync，否则通过 handler 通信
                 if (isRunningOnLooperThreadLocked()) {
                     scheduleVsyncLocked();
                 } else {
@@ -608,7 +612,7 @@ public final class Choreographer {
                     msg.setAsynchronous(true);
                     mHandler.sendMessageAtFrontOfQueue(msg);
                 }
-            } else {
+            } else { // 未开启 vsync，4.1 之后默认开启
                 final long nextFrameTime = Math.max(
                         mLastFrameTimeNanos / TimeUtils.NANOS_PER_MS + sFrameDelay, now);
                 if (DEBUG_FRAMES) {
@@ -642,9 +646,12 @@ public final class Choreographer {
 
             long intendedFrameTimeNanos = frameTimeNanos;
             startNanos = System.nanoTime();
+			// 计算超时时间
             final long jitterNanos = startNanos - frameTimeNanos;
-            if (jitterNanos >= mFrameIntervalNanos) {
+			// 超过一帧的时间
+			if (jitterNanos >= mFrameIntervalNanos) {
                 final long skippedFrames = jitterNanos / mFrameIntervalNanos;
+				// 掉帧超过 30 帧，打印 log
                 if (skippedFrames >= SKIPPED_FRAME_WARNING_LIMIT) {
                     Log.i(TAG, "Skipped " + skippedFrames + " frames!  "
                             + "The application may be doing too much work on its main thread.");
@@ -864,9 +871,11 @@ public final class Choreographer {
                     doFrame(System.nanoTime(), 0);
                     break;
                 case MSG_DO_SCHEDULE_VSYNC:
+					// 申请 vsync 信号
                     doScheduleVsync();
                     break;
                 case MSG_DO_SCHEDULE_CALLBACK:
+					// 执行延时消息
                     doScheduleCallback(msg.arg1);
                     break;
             }
@@ -924,6 +933,7 @@ public final class Choreographer {
 
             mTimestampNanos = timestampNanos;
             mFrame = frame;
+			// 这里传入的是 this，会回调本身的 run() 方法
             Message msg = Message.obtain(mHandler, this);
             msg.setAsynchronous(true);
             mHandler.sendMessageAtTime(msg, timestampNanos / TimeUtils.NANOS_PER_MS);
