@@ -5608,6 +5608,7 @@ public class Activity extends ContextThemeWrapper
                 if (resultData != null) {
                     resultData.prepareToLeaveProcess(this);
                 }
+				// Binder 调用 AMS.finishActivity()
                 if (ActivityManager.getService()
                         .finishActivity(mToken, resultCode, resultData, finishTask)) {
                     mFinished = true;

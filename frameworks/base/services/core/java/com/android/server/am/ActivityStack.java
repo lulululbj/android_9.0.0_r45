@@ -1426,7 +1426,7 @@ class ActivityStack<T extends StackWindowController> extends ConfigurationContai
         ActivityRecord prev = mResumedActivity;
 
         if (prev == null) {
-            // 没有 onResume 的 Activity，无需执行 pause
+            // 没有 onResume 的 Activity，不能执行 pause
             if (resuming == null) {
                 Slog.wtf(TAG, "Trying to pause when nothing is resumed");
                 mStackSupervisor.resumeFocusedStackTopActivityLocked();
@@ -1445,6 +1445,7 @@ class ActivityStack<T extends StackWindowController> extends ConfigurationContai
         mLastPausedActivity = prev;
         mLastNoHistoryActivity = (prev.intent.getFlags() & Intent.FLAG_ACTIVITY_NO_HISTORY) != 0
                 || (prev.info.flags & ActivityInfo.FLAG_NO_HISTORY) != 0 ? prev : null;
+		// 设置当前 Activity 状态为 PAUSING
         prev.setState(PAUSING, "startPausingLocked");
         prev.getTask().touchActiveTime();
         clearLaunchTime(prev);
@@ -1484,7 +1485,7 @@ class ActivityStack<T extends StackWindowController> extends ConfigurationContai
             mStackSupervisor.acquireLaunchWakelock();
         }
 
-        if (mPausingActivity != null) {
+        if (mPausingActivity != null) { // mPausingActivity 就是当前 Activity
             // Have the window manager pause its key dispatching until the new
             // activity has started.  If we're pausing the activity just because
             // the screen is being turned off and the UI is sleeping, don't interrupt
@@ -1495,13 +1496,15 @@ class ActivityStack<T extends StackWindowController> extends ConfigurationContai
                  Slog.v(TAG_PAUSE, "Key dispatch not paused for screen off");
             }
 
-            if (pauseImmediately) {
+            if (pauseImmediately) { // 这里是 false，进入 else 分支
                 // If the caller said they don't want to wait for the pause, then complete
                 // the pause now.
                 completePauseLocked(false, resuming);
                 return false;
 
             } else {
+				// 发送一个延时 500ms 的消息，等待 pause 流程一点时间
+				// 最终会回调 activityPausedLocked() 方法
                 schedulePauseTimeout(prev);
                 return true;
             }
@@ -1553,13 +1556,14 @@ class ActivityStack<T extends StackWindowController> extends ConfigurationContai
         mStackSupervisor.ensureActivitiesVisibleLocked(null, 0, !PRESERVE_WINDOWS);
     }
 
-    private void completePauseLocked(boolean resumeNext, ActivityRecord resuming) {
+    private void requestFinishActivityLocked(boolean resumeNext, ActivityRecord resuming) {
         ActivityRecord prev = mPausingActivity;
         if (DEBUG_PAUSE) Slog.v(TAG_PAUSE, "Complete pause: " + prev);
 
         if (prev != null) {
             prev.setWillCloseOrEnterPip(false);
             final boolean wasStopping = prev.isState(STOPPING);
+			// 设置状态为 PAUSED
             prev.setState(PAUSED, "completePausedLocked");
             if (prev.finishing) {
                 if (DEBUG_PAUSE) Slog.v(TAG_PAUSE, "Executing finish of activity: " + prev);
@@ -1603,8 +1607,10 @@ class ActivityStack<T extends StackWindowController> extends ConfigurationContai
         }
 
         if (resumeNext) {
+			// 当前获取焦点的 ActivityStack
             final ActivityStack topStack = mStackSupervisor.getFocusedStack();
             if (!topStack.shouldSleepOrShutDownActivities()) {
+				// 恢复要显示的 activity
                 mStackSupervisor.resumeFocusedStackTopActivityLocked(topStack, prev, null);
             } else {
                 checkReadyForSleep();
@@ -3719,6 +3725,8 @@ class ActivityStack<T extends StackWindowController> extends ConfigurationContai
 
         mWindowManager.deferSurfaceLayout();
         try {
+			// 标记 r.finishing = true，
+			// 前面会做重复 finish 的检测就是依赖这个值
             r.makeFinishingLocked();
             final TaskRecord task = r.getTask();
             EventLog.writeEvent(EventLogTags.AM_FINISH_ACTIVITY,
@@ -3737,10 +3745,12 @@ class ActivityStack<T extends StackWindowController> extends ConfigurationContai
                 }
             }
 
+			// 暂停事件分发
             r.pauseKeyDispatchingLocked();
 
             adjustFocusedActivityStack(r, "finishActivity");
 
+			// 处理 activity result
             finishActivityResultsLocked(r, resultCode, resultData);
 
             final boolean endTask = index <= 0 && !task.isClearingToReuseTask();
@@ -3820,6 +3830,7 @@ class ActivityStack<T extends StackWindowController> extends ConfigurationContai
     static final int FINISH_AFTER_PAUSE = 1;
     static final int FINISH_AFTER_VISIBLE = 2;
 
+	// 这里的参数是 prev, FINISH_AFTER_VISIBLE, false,"completedPausedLocked"
     final ActivityRecord finishCurrentActivityLocked(ActivityRecord r, int mode, boolean oomAdj,
             String reason) {
         // First things first: if this activity is currently visible,
@@ -3829,16 +3840,20 @@ class ActivityStack<T extends StackWindowController> extends ConfigurationContai
         // The activity that we are finishing may be over the lock screen. In this case, we do not
         // want to consider activities that cannot be shown on the lock screen as running and should
         // proceed with finishing the activity if there is no valid next top running activity.
+        // 获取将要显示的栈顶 Activity
         final ActivityRecord next = mStackSupervisor.topRunningActivityLocked(
                 true /* considerKeyguardState */);
 
+		// mode 是 FINISH_AFTER_VISIBLE，进入此分支
         if (mode == FINISH_AFTER_VISIBLE && (r.visible || r.nowVisible)
                 && next != null && !next.nowVisible) {
             if (!mStackSupervisor.mStoppingActivities.contains(r)) {
+				// 加入到 mStackSupervisor.mStoppingActivities
                 addToStopping(r, false /* scheduleIdle */, false /* idleDelayed */);
             }
             if (DEBUG_STATES) Slog.v(TAG_STATES,
                     "Moving to STOPPING: "+ r + " (finish requested)");
+			// 设置状态为 STOPPING
             r.setState(STOPPING, "finishCurrentActivityLocked");
             if (oomAdj) {
                 mService.updateOomAdjLocked();

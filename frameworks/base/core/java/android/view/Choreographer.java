@@ -229,6 +229,7 @@ public final class Choreographer {
 
     private Choreographer(Looper looper, int vsyncSource) {
         mLooper = looper;
+		// 处理事件
         mHandler = new FrameHandler(looper);
 		// 4.1 之后默认为 true，
 		// FrameDisplayEventReceiver 是个 vsync 事件接收器 
@@ -237,9 +238,9 @@ public final class Choreographer {
                 : null;
         mLastFrameTimeNanos = Long.MIN_VALUE;
 
-		// 一帧的时间
+		// 一帧的时间，60pfs 的话就是 16.7ms
         mFrameIntervalNanos = (long)(1000000000 / getRefreshRate());
-
+		// 回调队列
         mCallbackQueues = new CallbackQueue[CALLBACK_LAST + 1];
         for (int i = 0; i <= CALLBACK_LAST; i++) {
             mCallbackQueues[i] = new CallbackQueue();
@@ -258,7 +259,8 @@ public final class Choreographer {
      * Gets the choreographer for the calling thread.  Must be called from
      * a thread that already has a {@link android.os.Looper} associated with it.
      *
-     * @return The choreographer for this thread.
+     * @return The choreographer for this thread. 
+     * 当前线程一般就是主线程
      * @throws IllegalStateException if the thread does not have a looper.
      */
     public static Choreographer getInstance() {
@@ -693,6 +695,7 @@ public final class Choreographer {
             Trace.traceBegin(Trace.TRACE_TAG_VIEW, "Choreographer#doFrame");
             AnimationUtils.lockAnimationClock(frameTimeNanos / TimeUtils.NANOS_PER_MS);
 
+			// doCallBacks() 开始执行回调
             mFrameInfo.markInputHandlingStart();
             doCallbacks(Choreographer.CALLBACK_INPUT, frameTimeNanos);
 
@@ -723,6 +726,7 @@ public final class Choreographer {
             // for earlier processing phases in a frame to post callbacks that should run
             // in a following phase, such as an input event that causes an animation to start.
             final long now = System.nanoTime();
+			// 根据 callbackType 找到对应的 CallbackRecord 对象
             callbacks = mCallbackQueues[callbackType].extractDueCallbacksLocked(
                     now / TimeUtils.NANOS_PER_MS);
             if (callbacks == null) {
@@ -935,6 +939,7 @@ public final class Choreographer {
             mFrame = frame;
 			// 这里传入的是 this，会回调本身的 run() 方法
             Message msg = Message.obtain(mHandler, this);
+			// 这是一个异步消息，保证优先执行
             msg.setAsynchronous(true);
             mHandler.sendMessageAtTime(msg, timestampNanos / TimeUtils.NANOS_PER_MS);
         }

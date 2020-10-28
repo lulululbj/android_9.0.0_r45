@@ -5716,7 +5716,7 @@ public class ActivityManagerService extends IActivityManager.Stub
         }
 
         synchronized(this) {
-        	// token 会持有 ActivityRecord 的弱引用
+        	// token 持有 ActivityRecord 的弱引用
             ActivityRecord r = ActivityRecord.isInStackLocked(token);
             if (r == null) {
                 return true;
@@ -5770,6 +5770,7 @@ public class ActivityManagerService extends IActivityManager.Stub
                         Slog.i(TAG, "Removing task failed to finish activity");
                     }
                 } else {
+                	// 调用 ActivityStack.requestFinishActivityLocked()
                     res = tr.getStack().requestFinishActivityLocked(token, resultCode,
                             resultData, "app-request", true);
                     if (!res) {
