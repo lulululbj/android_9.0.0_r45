@@ -170,6 +170,7 @@ public abstract class DisplayEventReceiver {
     // 有 vsync 信号时，由 native 调用此方法
     @SuppressWarnings("unused")
     private void dispatchVsync(long timestampNanos, int builtInDisplayId, int frame) {
+    	// timestampNanos 是 vsync 回调的时间
         onVsync(timestampNanos, builtInDisplayId, frame);
     }
 

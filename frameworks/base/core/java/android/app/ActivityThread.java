@@ -813,7 +813,7 @@ public final class ActivityThread extends ClientTransactionHandler {
             s.token = token;
             s.info = info;
             s.compatInfo = compatInfo;
-
+			// 向主线程发送消息
             sendMessage(H.CREATE_SERVICE, s);
         }
 
@@ -3564,7 +3564,7 @@ public final class ActivityThread extends ClientTransactionHandler {
                 data.info.applicationInfo, data.compatInfo);
         Service service = null;
         try {
-			// 创建 Service
+			// 反射创建 Service
             java.lang.ClassLoader cl = packageInfo.getClassLoader();
             service = packageInfo.getAppFactory()
                     .instantiateService(cl, data.info.name, data.intent);
@@ -3592,6 +3592,7 @@ public final class ActivityThread extends ClientTransactionHandler {
 			service.onCreate();
             mServices.put(data.token, service);
             try {
+				// 通知 AMS 服务创建完成
                 ActivityManager.getService().serviceDoneExecuting(
                         data.token, SERVICE_DONE_EXECUTING_ANON, 0, 0);
             } catch (RemoteException e) {
@@ -3873,6 +3874,7 @@ public final class ActivityThread extends ClientTransactionHandler {
         mSomeActivitiesChanged = true;
 
         // TODO Push resumeArgs into the activity for consideration
+        // 回调 onResume()
         final ActivityClientRecord r = performResumeActivity(token, finalStateRequest, reason);
         if (r == null) {
             // We didn't actually resume the activity, so skipping any follow-up actions.

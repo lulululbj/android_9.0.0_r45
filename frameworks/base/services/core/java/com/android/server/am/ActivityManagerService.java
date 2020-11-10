@@ -20511,6 +20511,9 @@ public class ActivityManagerService extends IActivityManager.Stub
             final long origId = Binder.clearCallingIdentity();
             ComponentName res;
             try {
+				// mServices 是 ActiveServices 对象
+				// caller 是 IApplicationThread 类型，客户端在 AMS 的代理对象，
+				// 通过 caller 可以 Binder 调用客户端的 ApplicationThread
                 res = mServices.startServiceLocked(caller, service,
                         resolvedType, callingPid, callingUid,
                         requireForeground, callingPackage, userId);

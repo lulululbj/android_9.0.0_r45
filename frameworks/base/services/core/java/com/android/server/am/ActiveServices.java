@@ -391,7 +391,7 @@ public final class ActiveServices {
             throws TransactionTooLargeException {
         if (DEBUG_DELAYED_STARTS) Slog.v(TAG_SERVICE, "startService: " + service
                 + " type=" + resolvedType + " args=" + service.getExtras());
-
+		// 是否处于前台
         final boolean callerFg;
         if (caller != null) {
             final ProcessRecord callerApp = mAm.getRecordForAppLocked(caller);
@@ -406,6 +406,7 @@ public final class ActiveServices {
             callerFg = true;
         }
 
+		// 获取 service 相关信息(1. 从缓存获取 2. PMS 解析获取)
         ServiceLookupResult res =
             retrieveServiceLocked(service, resolvedType, callingPackage,
                     callingPid, callingUid, userId, true, callerFg, false, false);
@@ -667,6 +668,7 @@ public final class ActiveServices {
         synchronized (r.stats.getBatteryStats()) {
             r.stats.startRunningLocked();
         }
+		// 追进去
         String error = bringUpServiceLocked(r, service.getFlags(), callerFg, false, false);
         if (error != null) {
             return new ComponentName("!!", error);
@@ -2055,6 +2057,7 @@ public final class ActiveServices {
                 r.app.executingServices.add(r);
                 r.app.execServicesFg |= fg;
                 if (timeoutNeeded && r.app.executingServices.size() == 1) {
+					// 发送延时消息
                     scheduleServiceTimeoutLocked(r.app);
                 }
             }
@@ -2290,6 +2293,7 @@ public final class ActiveServices {
         //Slog.i(TAG, "Bring up service:");
         //r.dump("  ");
 
+		// service 所在进程已经启动
         if (r.app != null && r.app.thread != null) {
             sendServiceArgsLocked(r, execInFg, false);
             return null;
@@ -2297,6 +2301,7 @@ public final class ActiveServices {
 
         if (!whileRestarting && mRestartingServices.contains(r)) {
             // If waiting for a restart, then do nothing.
+            // 正在等待延迟重启，直接返回
             return null;
         }
 
@@ -2306,6 +2311,7 @@ public final class ActiveServices {
 
         // We are now bringing the service up, so no longer in the
         // restarting state.
+        // 从重启列表中移除
         if (mRestartingServices.remove(r)) {
             clearRestartingIfNeededLocked(r);
         }
@@ -2345,12 +2351,14 @@ public final class ActiveServices {
         ProcessRecord app;
 
         if (!isolated) {
+			// 查询服务所在的进程是否已经启动
             app = mAm.getProcessRecordLocked(procName, r.appInfo.uid, false);
             if (DEBUG_MU) Slog.v(TAG_MU, "bringUpServiceLocked: appInfo.uid=" + r.appInfo.uid
                         + " app=" + app);
             if (app != null && app.thread != null) {
                 try {
                     app.addPackage(r.appInfo.packageName, r.appInfo.longVersionCode, mAm.mProcessStats);
+					// 进程已经启动，直接启动服务
                     realStartServiceLocked(r, app, execInFg);
                     return null;
                 } catch (TransactionTooLargeException e) {
@@ -2379,6 +2387,7 @@ public final class ActiveServices {
         // Not running -- get it started, and enqueue this service record
         // to be executed when the app comes up.
         if (app == null && !permissionsReviewRequired) {
+			// 进程未启动时，先启动服务所在进程
             if ((app=mAm.startProcessLocked(procName, r.appInfo, true, intentFlags,
                     hostingType, r.name, false, isolated, false)) == null) {
                 String msg = "Unable to launch app "
@@ -2404,6 +2413,8 @@ public final class ActiveServices {
         }
 
         if (!mPendingServices.contains(r)) {
+			// 进程尚未启动时，加入待启动服务列表
+			// 进程创建之后，会通过 mPendingServices 来启动服务
             mPendingServices.add(r);
         }
 
@@ -2438,10 +2449,12 @@ public final class ActiveServices {
         if (DEBUG_MU)
             Slog.v(TAG_MU, "realStartServiceLocked, ServiceRecord.uid = " + r.appInfo.uid
                     + ", ProcessRecord.uid = " + app.uid);
+		// 绑定进程信息
         r.app = app;
         r.restartTime = r.lastActivity = SystemClock.uptimeMillis();
 
         final boolean newService = app.services.add(r);
+		// 发送延时消息（检测 ANR）
         bumpServiceExecutingLocked(r, execInFg, "create");
         mAm.updateLruProcessLocked(app, false, null);
         updateServiceForegroundLocked(r.app, /* oomAdj= */ false);
@@ -2462,6 +2475,8 @@ public final class ActiveServices {
             mAm.notifyPackageUse(r.serviceInfo.packageName,
                                  PackageManager.NOTIFY_PACKAGE_USE_SERVICE);
             app.forceProcessStateUpTo(ActivityManager.PROCESS_STATE_SERVICE);
+			// app.thread 是 IApplicationThread 对象，
+			// 这里是 Binder 调用 ActivityThread.ApplicationThread.scheduleCreateService() 方法
             app.thread.scheduleCreateService(r, r.serviceInfo,
                     mAm.compatibilityInfoForPackageLocked(r.serviceInfo.applicationInfo),
                     app.repProcState);
@@ -2475,6 +2490,7 @@ public final class ActiveServices {
             if (!created) {
                 // Keep the executeNesting count accurate.
                 final boolean inDestroying = mDestroyingServices.contains(r);
+				// 移除延时消息
                 serviceDoneExecutingLocked(r, inDestroying, inDestroying);
 
                 // Cleanup.
@@ -2506,6 +2522,7 @@ public final class ActiveServices {
                     null, null, 0));
         }
 
+		// 服务已经启动，Binder 回调 service 的 onStartCommand() 方法
         sendServiceArgsLocked(r, execInFg, true);
 
         if (r.delayed) {
@@ -2588,6 +2605,7 @@ public final class ActiveServices {
         slice.setInlineCountLimit(4);
         Exception caughtException = null;
         try {
+			// Binder 调用客户端 ApplicationThread 的 scheduleServiceArgs() 方法
             r.app.thread.scheduleServiceArgs(r, slice);
         } catch (TransactionTooLargeException e) {
             if (DEBUG_SERVICE) Slog.v(TAG_SERVICE, "Transaction too large for " + args.size()
@@ -3020,6 +3038,7 @@ public final class ActiveServices {
                         "Nesting at 0 of " + r.shortName);
                 r.app.execServicesFg = false;
                 r.app.executingServices.remove(r);
+				// 没有正在执行的 service，清除延迟消息
                 if (r.app.executingServices.size() == 0) {
                     if (DEBUG_SERVICE || DEBUG_SERVICE_EXECUTING) Slog.v(TAG_SERVICE_EXECUTING,
                             "No more executingServices of " + r.shortName);
@@ -3080,6 +3099,7 @@ public final class ActiveServices {
                     i--;
                     proc.addPackage(sr.appInfo.packageName, sr.appInfo.longVersionCode,
                             mAm.mProcessStats);
+					// 启动服务
                     realStartServiceLocked(sr, proc, sr.createdFromFg);
                     didSomething = true;
                     if (!isServiceNeededLocked(sr, false, false)) {
@@ -3575,6 +3595,7 @@ public final class ActiveServices {
                     (proc.execServicesFg ? SERVICE_TIMEOUT : SERVICE_BACKGROUND_TIMEOUT);
             ServiceRecord timeout = null;
             long nextTime = 0;
+			// 找到超时的 service
             for (int i=proc.executingServices.size()-1; i>=0; i--) {
                 ServiceRecord sr = proc.executingServices.valueAt(i);
                 if (sr.executingStart < maxTime) {
@@ -3585,6 +3606,7 @@ public final class ActiveServices {
                     nextTime = sr.executingStart;
                 }
             }
+			// 判断超时的 service 所在进程是否包含 mLruProcesses 中
             if (timeout != null && mAm.mLruProcesses.contains(proc)) {
                 Slog.w(TAG, "Timeout executing service: " + timeout);
                 StringWriter sw = new StringWriter();
@@ -3595,6 +3617,7 @@ public final class ActiveServices {
                 mLastAnrDump = sw.toString();
                 mAm.mHandler.removeCallbacks(mLastAnrDumpClearer);
                 mAm.mHandler.postDelayed(mLastAnrDumpClearer, LAST_ANR_LIFETIME_DURATION_MSECS);
+				// 拼接 ANR 消息
                 anrMessage = "executing service " + timeout.shortName;
             } else {
                 Message msg = mAm.mHandler.obtainMessage(
@@ -3606,6 +3629,7 @@ public final class ActiveServices {
         }
 
         if (anrMessage != null) {
+			// 发现 ANR
             mAm.mAppErrors.appNotResponding(proc, null, null, false, anrMessage);
         }
     }
@@ -3665,6 +3689,8 @@ public final class ActiveServices {
         Message msg = mAm.mHandler.obtainMessage(
                 ActivityManagerService.SERVICE_TIMEOUT_MSG);
         msg.obj = proc;
+		// 前台 20s，后天 200s
+		// 如果到时仍未被取消，则发生 ANR
         mAm.mHandler.sendMessageDelayed(msg,
                 proc.execServicesFg ? SERVICE_TIMEOUT : SERVICE_BACKGROUND_TIMEOUT);
     }

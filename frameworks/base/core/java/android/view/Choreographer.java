@@ -649,9 +649,12 @@ public final class Choreographer {
             long intendedFrameTimeNanos = frameTimeNanos;
             startNanos = System.nanoTime();
 			// 计算超时时间
+			// frameTimeNanos 是 vsync 信号回调的时间，startNanos 是当前时间戳
+			// 相减得到主线程的耗时时间
             final long jitterNanos = startNanos - frameTimeNanos;
-			// 超过一帧的时间
+			// mFrameIntervalNanos 是一帧的时间
 			if (jitterNanos >= mFrameIntervalNanos) {
+				// 计算掉了多少帧
                 final long skippedFrames = jitterNanos / mFrameIntervalNanos;
 				// 掉帧超过 30 帧，打印 log
                 if (skippedFrames >= SKIPPED_FRAME_WARNING_LIMIT) {

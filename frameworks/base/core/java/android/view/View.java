@@ -16444,6 +16444,7 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
             if (p != null && ai != null && l < r && t < b) {
                 final Rect damage = ai.mTmpInvalRect;
                 damage.set(l, t, r, b);
+				// 调用 ViewGroup.invalidateChild()
                 p.invalidateChild(this, damage);
             }
 

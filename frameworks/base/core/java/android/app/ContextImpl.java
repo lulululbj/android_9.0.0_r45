@@ -1526,6 +1526,7 @@ class ContextImpl extends Context {
 
     private void validateServiceIntent(Intent service) {
         if (service.getComponent() == null && service.getPackage() == null) {
+			// LOLLIPOP 之后不允许隐式启动
             if (getApplicationInfo().targetSdkVersion >= Build.VERSION_CODES.LOLLIPOP) {
                 IllegalArgumentException ex = new IllegalArgumentException(
                         "Service Intent must be explicit: " + service);
@@ -1568,8 +1569,11 @@ class ContextImpl extends Context {
     private ComponentName startServiceCommon(Intent service, boolean requireForeground,
             UserHandle user) {
         try {
+			// 校验，LOLLIPOP 之后不允许隐式启动
             validateServiceIntent(service);
             service.prepareToLeaveProcess(this);
+			// Binder 调用 AMS.startService()
+			// mMainThread.getApplicationThread() 是可跨进程传递的 ApplicationThread 对象
             ComponentName cn = ActivityManager.getService().startService(
                 mMainThread.getApplicationThread(), service, service.resolveTypeIfNeeded(
                             getContentResolver()), requireForeground,

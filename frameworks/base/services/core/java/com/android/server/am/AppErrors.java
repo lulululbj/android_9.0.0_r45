@@ -904,6 +904,7 @@ class AppErrors {
 
         long anrTime = SystemClock.uptimeMillis();
         if (ActivityManagerService.MONITOR_CPU_USAGE) {
+			// 更新 cpu 信息
             mService.updateCpuStatsNow();
         }
 
@@ -941,6 +942,7 @@ class AppErrors {
                     app.processName, app.info.flags, annotation);
 
             // Dump thread traces as quickly as we can, starting with "interesting" processes.
+            // 将当前进程 pid 加入到 firstPids
             firstPids.add(app.pid);
 
             // Don't dump other PIDs if it's a background ANR
@@ -1018,6 +1020,7 @@ class AppErrors {
 
         // For background ANRs, don't pass the ProcessCpuTracker to
         // avoid spending 1/2 second collecting stats to rank lastPids.
+        // 输出 traces 文件
         File tracesFile = ActivityManagerService.dumpStackTraces(
                 true, firstPids,
                 (isSilentANR) ? null : processCpuTracker,
@@ -1091,6 +1094,7 @@ class AppErrors {
                     info.toString());
 
             // Bring up the infamous App Not Responding dialog
+            // 通知 ANR 对话框
             Message msg = Message.obtain();
             msg.what = ActivityManagerService.SHOW_NOT_RESPONDING_UI_MSG;
             msg.obj = new AppNotRespondingDialog.Data(app, activity, aboveSystem);

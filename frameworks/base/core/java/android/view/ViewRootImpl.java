@@ -747,6 +747,7 @@ public final class ViewRootImpl implements ViewParent,
                 // Schedule the first layout -before- adding to the window
                 // manager, to make sure we do the relayout before receiving
                 // any other events from the system.
+                // 发起绘制流程
                 requestLayout();
                 if ((mWindowAttributes.inputFeatures
                         & WindowManager.LayoutParams.INPUT_FEATURE_NO_INPUT_CHANNEL) == 0) {
@@ -758,7 +759,8 @@ public final class ViewRootImpl implements ViewParent,
                     mOrigWindowType = mWindowAttributes.type;
                     mAttachInfo.mRecomputeGlobalAttributes = true;
                     collectViewAttributes();
-					// Binder 调用 Session.addToDisplay()
+					// Binder 调用 Session.addToDisplay()，将 window 添加到屏幕上
+					// 注意返回值，可能添加失败，下面会处理 res
                     res = mWindowSession.addToDisplay(mWindow, mSeq, mWindowAttributes,
                             getHostVisibility(), mDisplay.getDisplayId(), mWinFrame,
                             mAttachInfo.mContentInsets, mAttachInfo.mStableInsets,
@@ -851,6 +853,7 @@ public final class ViewRootImpl implements ViewParent,
                             Looper.myLooper());
                 }
 
+				// 将 ViewRootImpl 设置为 DecorView 的 parent
                 view.assignParent(this);
                 mAddedTouchMode = (res & WindowManagerGlobal.ADD_FLAG_IN_TOUCH_MODE) != 0;
                 mAppVisible = (res & WindowManagerGlobal.ADD_FLAG_APP_VISIBLE) != 0;
